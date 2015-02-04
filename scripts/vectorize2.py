@@ -187,7 +187,8 @@ for c in thresholded_contours:
         p[0] = p[0] + 0.1*np.random.rand()
         p[1] = p[1] + 0.1*np.random.rand()
    
-mesh_points = copy.copy(thresholded_contours[longest_index])			     #First add longest contour to mesh.
+#mesh_points = copy.copy(thresholded_contours[longest_index])			     #First add longest contour to mesh.
+mesh_points = thresholded_contours[longest_index]
 mesh_facets = vh.roundTripConnect(0,len(mesh_points)-1)				     #Create facets from the longest contour.
 hole_points = []  										     #Every contour other than the longest needs an interiour point.
 for i in xrange(len(thresholded_contours)):						     #Traverse all contours. 
