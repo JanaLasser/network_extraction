@@ -432,7 +432,8 @@ def _drawGraph(G,verbose):
         print "\t from _drawGraph: drawing took %1.2f sec"%(time.clock()-start)
     
     
-def removeRedundantNodes(G,verbose,mode = 0):
+def removeRedundantNodes(G,verbose,mode):
+    print "mode: ",mode
     '''
         Removes a specified number of redundant nodes from the graph. Nodes should
         be removed in place but the graph is returned nevertheless.
@@ -460,11 +461,13 @@ def removeRedundantNodes(G,verbose,mode = 0):
     upper_five = (max_val - min_val)/5.0  
     
     while(True):
+        print "i: ",i
         if mode == 1:
-            if i > 2: break
+            if i > 2:              
+                break
         if mode == 0:
             if new_order == order:break
-        else:
+        if mode == 2:
             break
         
         nodelist = []
@@ -498,10 +501,12 @@ def removeRedundantNodes(G,verbose,mode = 0):
             
         order = new_order
         new_order = G.order() 
+        #print "nodes: ",new_order
         if verbose:
             print "\t from removeRedundantNodes: collapsing iteration ",i
         i+=1
-        
+        if order == new_order:
+            break
     return G
  
 def drawAndSafe(G,image_name,dest,redundancy,verbose):
