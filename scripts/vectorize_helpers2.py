@@ -459,7 +459,7 @@ def removeRedundantNodes(G,verbose,mode = 0):
     max_val = np.amax(diameters)
     upper_five = (max_val - min_val)/5.0  
     
-    while(i<=2):
+    while(True):
         if mode == 1:
             if i > 2: break
         if mode == 0:
