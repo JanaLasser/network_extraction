@@ -388,15 +388,15 @@ def createGraph(adjacency_matrix,all_triangles,height):
     attr = dict(zip(np.arange(len(y)),y))
     nx.set_node_attributes(G,'y',attr)
     
-    #extract triangle diameters and set them as thickness for nodes
-    diameter_node = [triangle.get_diameter() for triangle in all_triangles]
-    attr = dict(zip(np.arange(len(diameter_node)),diameter_node))
+    #extract triangle radii and set them as thickness for nodes
+    radius_node = [triangle.get_radius() for triangle in all_triangles]
+    attr = dict(zip(np.arange(len(radius_node)),radius_node))
     nx.set_node_attributes(G,'conductivity',attr)
     
     #set thickness of edges as mean over the thickness of the nodes it connects
-    diameter_edge = [(G.node[edge[0]]['conductivity'] + \
+    radius_edge = [(G.node[edge[0]]['conductivity'] + \
                       G.node[edge[1]]['conductivity'])/2.0 for edge in G.edges()]                 
-    attr = dict(zip(G.edges(),diameter_edge))
+    attr = dict(zip(G.edges(),radius_edge))
     nx.set_edge_attributes(G,'conductivity',attr)
     
     #y = [triangle.centroid.get_y() for triangle in all_triangles]
@@ -455,9 +455,9 @@ def removeRedundantNodes(G,verbose,mode):
     order = G.order()
     new_order = 0    
     i = 0 
-    diameters = [edge[2]['conductivity'] for edge in G.edges(data=True)]
-    min_val = np.amin(diameters)
-    max_val = np.amax(diameters)
+    radii = [edge[2]['conductivity'] for edge in G.edges(data=True)]
+    min_val = np.amin(radii)
+    max_val = np.amax(radii)
     upper_five = (max_val - min_val)/5.0  
     
     while(True):

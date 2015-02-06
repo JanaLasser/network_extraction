@@ -235,7 +235,7 @@ Triangle classification:
         - build triangle-objects from the triangulation
         - set the type of each triangle (junction, normal, end or isolated)
           depending on how many neighbors it has
-        - set the diameter of each triangle by looking up its "midpoint"
+        - set the radius of each triangle by looking up its "midpoint"
           in the distance map
         - get rid of isolated triangles
 """
@@ -248,7 +248,7 @@ isolated_indices = []
 default_triangles = 0
 for i in range(len(triangles)):                                                
     t = triangles[i]
-    default_triangles += t.set_typ(distance_map)                               #set the triangle's type, midpoint and diameter
+    default_triangles += t.set_typ(distance_map)                               #set the triangle's type, midpoint and radius
     if t.get_typ() == "junction":                                              #count the number of each triangle type for debugging
         junction += 1
     elif t.get_typ() == "normal":
@@ -264,7 +264,7 @@ if debug:                                                                      #
     print "\tTriangle types:"
     print "\tjunction: %d, normal: %d, end: %d, isolated: %d"\
                 %(junction,normal,end,len(isolated_indices))
-    print "\ttriangle diameters defaulted to 1.0: ",default_triangles
+    print "\ttriangle radii defaulted to 1.0: ",default_triangles
 if verbose:	           
     step = time.clock()                                                        #progress output
     print "Done in %1.2f sec." %(step-previous_step)
@@ -291,7 +291,7 @@ Graph creation and improvement
         - prune away the outermost branches to avoid surplus branches due
           to noisy contours
         - create a graph object from the neighborhood relations, coordinates
-          and diameter stored in the adjacency matrix and
+          and radius stored in the adjacency matrix and
           the list of triangles.
 """
 adjacency_matrix,triangles = vh.bruteforcePruning(adjacency_matrix,\
@@ -319,11 +319,11 @@ Redundant node removal
           graph
 """
 if redundancy == 2: 
-    vh.drawAndSafe(G,image_name,dest,2,verbose)                                #draw and safe graph with redundant nodes                         
+    vh.drawAndSafe(G,image_name,dest,redundancy,verbose)                                #draw and safe graph with redundant nodes                         
 
 if redundancy == 1:                                                            #draw and safe graph with half redundant nodes
-    G = vh.removeRedundantNodes(G,verbose, 1)
-    vh.drawAndSafe(G,image_name,dest,1,verbose)
+    G = vh.removeRedundantNodes(G,verbose,redundancy)
+    vh.drawAndSafe(G,image_name,dest,redundancy,verbose)
     
 G = vh.removeRedundantNodes(G,verbose,0)                                       #draw and safe graph without redundant nodes
 vh.drawAndSafe(G,image_name,dest,0,verbose)										

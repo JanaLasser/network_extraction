@@ -188,7 +188,7 @@ Members:
     - centroid: "midpoint" of the triangle, point with the largest distance
                 to the nearest edge of the foreground structure. It is only
                 called "centroid" because of historical reasons :-)
-    - diameter: distance to the nearest edge of the foreground structure
+    - radius: distance to the nearest edge of the foreground structure
     - index:    counter used to fix the triangles position in a triangle
                 adjacency matrix
     - neighbor: pointers to the triangles neighbors (3 to 0 possible neighbors)
@@ -196,7 +196,7 @@ Members:
                 point to None at triangle construction and are set later by
                 the triangle's "set_type" method.
     - Cpoints h, opp_point and half_ext_edge:
-                helper points for the calculation of centroid and diameter
+                helper points for the calculation of centroid and radius
             
 Exposed functions:
     
@@ -206,7 +206,7 @@ cdef class CshapeTriangle:
     cdef Cpoint p1, p2, p3    
     cdef typ 
     cdef Cpoint centroid
-    cdef double diameter
+    cdef double radius
     cdef int index
     #might be more convenient to store them in a list but so far they are
     #three separate members
@@ -240,7 +240,7 @@ cdef class CshapeTriangle:
         else: edge3.triangle2 = self
     
     #getter and setter for the member variables
-    cpdef get_diameter(self): return self.diameter
+    cpdef get_radius(self): return self.radius
     cpdef get_centroid(self): return self.centroid      
     cpdef get_p1(self): return self.p1       
     cpdef get_p2(self): return self.p2       
@@ -260,11 +260,11 @@ cdef class CshapeTriangle:
     #It also sets pointers to the triangle's neighbors so we are able to locate
     #them without searching through long lists.
     #The function also sets helper points for the calculation of the
-    #triangle's diameter and centroid. At the and, a helper function for the
-    #actual calculation of diameter and centroid based on the euclidean 
+    #triangle's radius and centroid. At the and, a helper function for the
+    #actual calculation of radius and centroid based on the euclidean 
     #distance map of the image is called.
     #This is done only after determination of the triange's type because 
-    #methods for setting the diameter and centroid differ depending on type.
+    #methods for setting the radius and centroid differ depending on type.
     cpdef set_typ(self,np.ndarray distance_map):
         #helper variables
         cdef int neighbors = 0
@@ -291,7 +291,7 @@ cdef class CshapeTriangle:
         if neighbors == 3:
             self.typ = "junction"  
             
-            #create helper points for calculation of triangle center and diameter
+            #create helper points for calculation of triangle center and radius
             #midpoints of the edges:
             h1 = Cpoint((self.p1.x+self.p2.x)/2.0, (self.p1.y+self.p2.y)/2.0)
             h2 = Cpoint((self.p1.x+self.p3.x)/2.0, (self.p1.y+self.p3.y)/2.0)
@@ -349,19 +349,19 @@ cdef class CshapeTriangle:
         else:
             self.typ = "isolated"
             
-        #calculate position of triangle centroid and diameter
-        return self.set_diameter_and_center(distance_map)
+        #calculate position of triangle centroid and radius
+        return self.set_radius_and_center(distance_map)
 
-    #helper function to calculate and set the diameter and centroid of the
-    #triangle. If the diameter cannot be found by looking up the coordinates
-    #of the centroid in the distance-map, the diameter defaults to 1.0. Every
+    #helper function to calculate and set the radius and centroid of the
+    #triangle. If the radius cannot be found by looking up the coordinates
+    #of the centroid in the distance-map, the radius defaults to 1.0. Every
     #time this is the case, the function returns 1 instead of the usual 0
     #so we are able to track the number of times we defaulted to 1.0.
     #In general, this happens for weird geometries every once in a while (100 
     #cases for 100k triangles is completely normal and nothing to worry about).
     #If the number of defaults does not get out of hand, the impact of the 
-    #default-triangle-diameters will be negligible
-    cdef set_diameter_and_center(CshapeTriangle self, \
+    #default-triangle-radii will be negligible
+    cdef set_radius_and_center(CshapeTriangle self, \
                                  np.ndarray[DTYPE_t,ndim=2] distance_map):
         #helper variables
         cdef double x1, y1, x2, y2, length, lamb, curr_x, curr_y
@@ -385,7 +385,7 @@ cdef class CshapeTriangle:
         #network's tip and we want to capture as much of the network's struc-
         #ture as possible, it is logical to set the centroid to the outermost
         #point.
-        #To set the triangles diameter, we are looking for the point with the
+        #To set the triangles radius, we are looking for the point with the
         #largest distance to the edges of the structure along a line from the 
         #middle of the triangle's only internal edge its opposing point.        
         if self.typ == "end": 
@@ -408,7 +408,7 @@ cdef class CshapeTriangle:
                     max_distance = curr_distance
                 curr_x += lamb*direction_x
                 curr_y += lamb*direction_y
-            self.diameter = max_distance       
+            self.radius = max_distance       
             #set the center to the "tip point"
             if self.edge1.triangle2 != None:
                 self.centroid = self.edge2.get_cp(self.edge3)
@@ -422,7 +422,7 @@ cdef class CshapeTriangle:
         
         #For normal triangles, we will search for a local maximum in the dist-
         #ance map along the line from the triangle's single external edge to
-        #its opposing point. We will set the diameter to the value of the local
+        #its opposing point. We will set the radius to the value of the local
         #maximum and the position of the centroid to the position of the 
         #maximum.
         elif self.typ == "normal": 
@@ -447,18 +447,18 @@ cdef class CshapeTriangle:
                     max_y = curr_y
                 curr_x += lamb*direction_x
                 curr_y += lamb*direction_y
-            #if we found a maximum, set diameter and centroid and return 0
+            #if we found a maximum, set radius and centroid and return 0
             if (max_y != -1 and max_x != -1):
-                self.diameter = max_distance
+                self.radius = max_distance
                 self.centroid = Cpoint(max_x,max_y)
                 return 0
-            #if we didn't find a maximum, default to a diameter of 1.0, set the
+            #if we didn't find a maximum, default to a radius of 1.0, set the
             #centroid to the real centroid of the triangle and return 1
             else:
                 self.centroid = Cpoint( \
                             round((self.p1.x+self.p2.x+self.p3.x)*(1.0/3.0)),\
                             round((self.p1.y+self.p2.y+self.p3.y)*(1.0/3.0)))                                                      
-                self.diameter = 1
+                self.radius = 1
                 return 1
          
         #For junction triangles we will search for a local maximum in the dist-
@@ -488,20 +488,20 @@ cdef class CshapeTriangle:
                     max_y = curr_y
                 curr_x += lamb*direction_x
                 curr_y += lamb*direction_y
-            #if we found a maximum, set diameter and centroid and return 0
+            #if we found a maximum, set radius and centroid and return 0
             if (max_y != -1 and max_x != -1):
-                self.diameter = max_distance
+                self.radius = max_distance
                 self.centroid = Cpoint(max_x,max_y)
                 return 0
             else:
-            #if we didn't find a maximum, default to a diameter of 1.0, set the
+            #if we didn't find a maximum, default to a radius of 1.0, set the
             #centroid to the real centroid of the triangle and return 1
                 self.centroid = Cpoint(\
                             round((self.p1.x+self.p2.x+self.p3.x)*(1.0/3.0)),\
                             round((self.p1.y+self.p2.y+self.p3.y)*(1.0/3.0))) 
-                self.diameter = 1.0
+                self.radius = 1.0
                 return 1
-        #We do not set diameter and centroid for isolated triangles because
+        #We do not set radius and centroid for isolated triangles because
         #we ignore them in the following processing anyways.
         else:
             return 0
