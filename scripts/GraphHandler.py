@@ -58,12 +58,15 @@ class GraphHandler(object):
                     self.graph.edges(data=True))  
                     
         for node in self.selected_nodes:
-            print self.selected_nodes
-            x = self.graph[node]['x']
-            y = self.graph[node]['y']
+            x = self.graph.node[node]['x']
+            y = self.graph.node[node]['y']
             self.PH.mark_node(node,x,y)
             
-            
+    
+    def clear_selection(self):
+        self.selected_nodes = {}
+        self.PH.clear_selection()
+        
     def get_node_from_xy(self,x,y):
         x_disp, y_disp = self.PH.figure.axes[0].transData.transform((x,y))
         for n, (x_s, y_s) in [(n, (d['x'], d['y']))\
@@ -88,6 +91,7 @@ class GraphHandler(object):
             for neighbor in neighbors:
                 self.PH.undraw_edge((n,neighbor))
                 self.PH.undraw_edge((neighbor,n))
+            self.PH.unmark_node(n)
         except nx.NetworkXError:
             print "tried to remove a node which is not there"
         
@@ -205,14 +209,19 @@ class GraphHandler(object):
         del figure2
         plt.close()               
       
-    def save_graph(self):
+    def save_graph(self,normalized):
         i = 1
         while True:
-            name = self.name_dict['work_name'] + '_new' + str(i) + '.gpickle'
-            dest = self.name_dict['dest']
+            if normalized:
+                name = self.name_dict['work_name'] + '_digraph' + str(i) + '.gpickle'
+            else:
+                name = self.name_dict['work_name'] + '_new' + str(i) + '.gpickle'
+            dest = self.name_dict['dest_path']
             if os.path.isfile(join(dest,name)):
                 i +=1
             else:      
-                nx.write_gpickle(self.graph,join(name,dest))
+                print name
+                print dest
+                nx.write_gpickle(self.graph,join(dest,name))
                 break
         print "saved graph!"

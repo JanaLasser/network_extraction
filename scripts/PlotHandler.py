@@ -10,6 +10,7 @@ from os.path import join
 import numpy as np
 import networkx as nx
 from PIL import Image
+from matplotlib.patches import Rectangle
 
 def getImage(image_path):    
     image = Image.open(image_path)
@@ -31,6 +32,11 @@ class PlotHandler(object):
     
     def __init__(self,figure,name_dict):     
         self.figure = figure
+        self.current_mode = None
+        self.current_action = None
+        self.ax = self.figure.gca()
+        #self.ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+        #  fancybox=True, shadow=True)
         self.name_dict = name_dict
         self.background = getImage(join(self.name_dict['source_path'],
                                         self.name_dict['orig_name']))
@@ -40,6 +46,7 @@ class PlotHandler(object):
         self.edge_list = {}
         self.marked_list = {}
         self.width_scale_factor = 0
+        plt.draw()
             
         
     def plot_graph(self,node_collection,edge_collection):
@@ -69,14 +76,21 @@ class PlotHandler(object):
         
         colormap = plt.get_cmap('hot')
         plt.imshow(self.background,origin='lower',alpha=0.5,cmap=colormap)
-            
+    
+    def update_mode(self,text):
+        print "update mode"      
+        self.current_mode = self.figure.gca().set_title(text,fontsize=14)
+        
+    def update_action(self,text):
+        self.current_action = self.figure.gca().set_xlabel(text,fontsize=14)
+        
         
     def mark_node(self,n,x_s,y_s):
-        new_mark = self.figure.gca().plot(x_s,y_s,marker='o',color='r',\
-                                            markersize=7,zorder=10)[0]
         try:
             self.marked_list[n]
         except KeyError:   
+            new_mark = self.figure.gca().plot(x_s,y_s,marker='o',color='r',\
+                                            markersize=7,zorder=10)[0]
             self.marked_list[n]=new_mark
 
     def unmark_node(self,n):
@@ -90,8 +104,6 @@ class PlotHandler(object):
  
     def undraw_node(self,n):
         self.node_list[n].remove()
-        self.marked_list[n].remove()
-        del self.marked_list[n]
         del self.node_list[n]
         
     def clear_selection(self):

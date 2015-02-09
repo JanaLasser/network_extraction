@@ -47,10 +47,11 @@ class InterActor(object):
     def __init__(self,source,dest_path):
         self.state_stack = []
         self.max_stored_states = 10
+        
         #handling of file IO names
         work_name, original_image_format = os.path.basename(source).split('.')
         source_path = source.split(work_name)[0]
-        if dest_path == None: dest_path = source
+        if dest_path == None: dest_path = source_path
         graph_name = work_name + '_graph_red1.gpickle'
         dm_name = work_name + '_dm.png'
         self.name_dict = {'work_name':work_name,
@@ -63,12 +64,14 @@ class InterActor(object):
         self.graph = load(join(self.name_dict['source_path'],\
                                     self.name_dict['graph_name']))
         self.selected_nodes = {}
+        self.mode_list = []
         
         #state flags
         self.select_on = False
         self.measure_on = False
         self.node_create_on = False
         self.normalized = False
+        self.shift_on = False
         
         #figure switches                       
         self.dpi = 100
@@ -77,16 +80,36 @@ class InterActor(object):
         self.GH = GraphHandler.GraphHandler(self.figure,self.name_dict,\
                                             self.CurrentStateSnapshot)
         self.update_state_stack()
+        self.update_mode(self.name_dict['work_name'],'add')
         self.edit_loop()      
+
+    def clear_selection(self):
+        self.selected_nodes = {}
+        self.GH.clear_selection()
 
     def processing_step(self):
         self.figure.canvas.draw()
         self.set_lim()
         self.update_state_stack()
+        
+    def update_mode(self,text,action):
+        if action == 'rm':
+            self.mode_list.remove(text)
+        elif action == 'add':
+            self.mode_list.append(text)
+        else:
+            print "action not recognized!"
+            
+        s = ""
+        for item in self.mode_list:
+            s += item + "\n"
+        s.rstrip('\n')
+        self.GH.PH.update_mode(s)
 
     def set_lim(self):
-        plt.xlim((0,self.GH.PH.width))
-        plt.ylim((0,self.GH.PH.height))
+        #plt.xlim((0,self.GH.PH.width))
+        #plt.ylim((0,self.GH.PH.height))
+        pass
 
     def init_window(self):
         print "initializing figure"
@@ -103,7 +126,10 @@ class InterActor(object):
     def undo(self):
         if len(self.state_stack) >= 1:
             self.state_stack.pop()
-            self.CurrentStateSnapshot = self.state_stack[-1]                      
+            try:
+                self.CurrentStateSnapshot = self.state_stack[-1] 
+            except IndexError:
+                print "no more undo-operations stored!"                  
             self.figure.clf()
             self.graph = self.CurrentStateSnapshot.graph
             self.selected_nodes = self.CurrentStateSnapshot.selected_nodes
@@ -123,7 +149,7 @@ class InterActor(object):
                 while True:
                     cmd2 = raw_input("Want to save before leaving? 'y/n' ")
                     if cmd2 == 'y':
-                        self.GH.save_graph()
+                        self.GH.save_graph(self.normalized)
                         return
                     elif cmd2 == 'n':
                         return
@@ -132,7 +158,7 @@ class InterActor(object):
              
             #save current progress
             elif cmd == 's':
-                self.GH.save_graph()
+                self.GH.save_graph(self.normalized)
             
             #enter manual graph manipulation mode
             elif cmd == 'm':
@@ -185,10 +211,9 @@ class InterActor(object):
     
     def manipulation_mode(self):
         print """
-        Press 'b' to enter node selection mode:
-                  select and deselect nodes by clicking on them.
-        Press 'i' to enter node creation mode:
-                  create nodes by clicking on the figure
+        Press 'b' to enter node manipulation mode:
+                  Select and deselect nodes by clicking on them.
+                  Create new nodes by shift-clicking on the figure.
         Press 'm' to show cycles
         Press 'a' to clear the current node selection
         Press 'd' to delete selected node(s) and adjacent edges
@@ -197,70 +222,80 @@ class InterActor(object):
         
         """
         
+        self.update_mode("Manipulation Mode","add") 
+        self.figure.canvas.draw()
+        
         cid_press = self.figure.canvas.mpl_connect('key_press_event',
                  self.manipulation_key_press)
                  
         raw_input()
         
+        if self.select_on:
+            self.update_mode("-b: Node Manipulation",'rm')
+            self.figure.canvas.mpl_disconnect(self.cid_click)
+            self.select_on = False
+        self.update_mode("Manipulation Mode",'rm')
+        self.figure.canvas.draw()
         self.figure.canvas.mpl_disconnect(cid_press)
+        
                  
                  
                  
     def manipulation_key_press(self,event):
         
-        #node creation mode
-        if event.key == 'i':
-            if self.node_create_on:
-                self.figure.canvas.mpl_disconnect(self.cid_click2)
-                self.node_create_on = False
-                print "exited node creation mode:"
-            else:
-                self.cid_click2 = self.figure.canvas.mpl_connect('button_press_event',
-                    self.on_click_create)
-                self.node_create_on = True
-                print "entered node creation mode:"
-        
         #node selection mode
         if event.key == 'b':
             if self.select_on:
+                self.update_mode("-b: Node Manipulation",'rm')
+                self.figure.canvas.draw()
                 self.figure.canvas.mpl_disconnect(self.cid_click)
                 self.select_on = False
-                print "exited node selection mode"
             else:
+                self.update_mode("-b: Node Manipulation",'add')
+                self.figure.canvas.draw()
+                self.cid_mod1 = self.figure.canvas.mpl_connect('key_press_event',
+                                self.modifier_key_on)
+                self.cid_mod1 = self.figure.canvas.mpl_connect('key_release_event',
+                                self.modifier_key_off)
                 self.cid_click = self.figure.canvas.mpl_connect('button_press_event',
                     self.on_click_select)
                 self.select_on = True
-                print "entered node selection mode"
             
         if event.key == 'm':
             print "looking for cycles"
             cycles = self.GH.detect_cycles()
             if cycles != None:
+                self.GH.PH.update_action("-m: Cycles marked")
                 self.selected_nodes.update(cycles) 
                 self.processing_step()
             else:
+                self.GH.PH.update_action("-m: No Cycles detected")
+                self.figure.canvas.draw()
                 print "no cycles detected!"
                
         if event.key == 'a':
             print "clearing current selection:"
-            self.GH.selected_nodes = {}
-            self.GH.PH.clear_selection()
-            self.selected_nodes = {}
+            self.GH.PH.update_action("-a: Selection cleared")
+            self.clear_selection()
             self.processing_step()
             
         if event.key == 'd':
             print "deleting selected nodes:"
+            self.GH.PH.update_action("-d: Selected nodes deleted")
+            self.processing_step()
             for n in self.selected_nodes:
                 self.GH.delete_node(n)
-            self.selected_nodes = {}
+            self.clear_selection()
             self.processing_step()
                           
         #create a new edge between two selected nodes    
         if event.key == 'e':
             print "connecting selected nodes"
             if len(self.selected_nodes) > 2:
+                self.GH.PH.update_action("-e: Too many nodes selected!")
                 print('more than two nodes selected, aborting...')
                 return
+            self.GH.PH.update_action("-e: Connected selected nodes")
             n1 = self.selected_nodes.keys()[0]
             n2 = self.selected_nodes.keys()[1]
             self.GH.create_edge(n1,n2)
@@ -268,6 +303,7 @@ class InterActor(object):
         
         #undo the last action
         if event.key == 'z':
+            self.GH.PH.update_action("-z: Undo...")
             print "undoing last action"
             self.undo()
             self.figure.canvas.draw()
@@ -285,28 +321,40 @@ class InterActor(object):
         #        self.measure_on = True
         #        print "entered measuring mode"
             
-        
-    def on_click_create(self,event):
-        self.GH.create_node(event.xdata, event.ydata)
-        self.processing_step()
+    
+    def modifier_key_on(self,event):
+        if event.key == 'shift':
+            self.shift_on = True
+    def modifier_key_off(self,event):
+        if event.key == 'shift':
+            self.shift_on = False
     
     def on_click_select(self,event):
-        tmp = self.GH.get_node_from_xy(event.xdata, event.ydata)
-        if tmp != None:
-            n,x_s,y_s = tmp
-            print "found node ", n
-            if n in self.selected_nodes:
-                print "deselect!"
-                self.GH.PH.unmark_node(n)
-                del self.selected_nodes[n]
-            else:
-                self.GH.PH.mark_node(n,x_s,y_s)
-                self.selected_nodes.update({n:(x_s,y_s)})
-                print "select!"
-            self.figure.canvas.draw()
-            self.set_lim()
+        if self.shift_on:
+            self.GH.create_node(event.xdata, event.ydata)
+            self.GH.PH.update_action("Node created at (%1.2f,%1.2f)"\
+                    %(event.xdata,event.ydata))
+            self.processing_step()
         else:
-            print "click nearer!"
+            tmp = self.GH.get_node_from_xy(event.xdata, event.ydata)
+            if tmp != None:
+                n,x_s,y_s = tmp
+                x = self.graph.node[n]['x']
+                y = self.graph.node[n]['y']
+                if n in self.selected_nodes:
+                    self.GH.PH.unmark_node(n)
+                    del self.selected_nodes[n]
+                    self.GH.PH.update_action("Node unmarked at (%1.2f,%1.2f)"\
+                        %(x,y))
+                else:
+                    self.GH.PH.mark_node(n,x_s,y_s)
+                    self.selected_nodes.update({n:(x_s,y_s)})
+                    self.GH.PH.update_action("Node marked at (%1.2f,%1.2f)"\
+                        %(x,y))
+                self.figure.canvas.draw()
+                self.set_lim()
+            else:
+                self.GH.PH.update_action("Click nearer!")
 
     #def on_click_measure(self,event):
     #    self.GH.measure_diameter(event.xdata, event.ydata)
