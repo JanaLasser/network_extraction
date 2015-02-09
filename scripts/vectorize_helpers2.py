@@ -461,7 +461,6 @@ def removeRedundantNodes(G,verbose,mode):
     upper_five = (max_val - min_val)/5.0  
     
     while(True):
-        print "i: ",i
         if mode == 1:
             if i > 2:              
                 break
@@ -496,12 +495,20 @@ def removeRedundantNodes(G,verbose,mode):
                     conductivity = (c1*w1+c2*w2)/(w1+w2) )
                     
                 nodelist.append(node)
-        for node in nodelist:
-            G.remove_node(node)
+        
+        #sometimes when the graph does not contain any branches (e.g. one
+        #single line) the redundant node removal ends up with a triangle at
+        #the end, god knows why. This is a dirty hack to remove one of the 
+        #three final nodes so a straight line is left which represents the 
+        #correct topology but maybe not entirely correct coordinates.        
+        if len(nodelist) == len(G.nodes())-1:
+            G.remove_node(nodelist[1])
+        else:
+            for node in nodelist:
+                G.remove_node(node)
             
         order = new_order
         new_order = G.order() 
-        #print "nodes: ",new_order
         if verbose:
             print "\t from removeRedundantNodes: collapsing iteration ",i
         i+=1

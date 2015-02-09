@@ -186,10 +186,10 @@ for c in thresholded_contours:
     for p in c:
         p[0] = p[0] + 0.1*np.random.rand()
         p[1] = p[1] + 0.1*np.random.rand()
-   
-#mesh_points = copy.copy(thresholded_contours[longest_index])			     #First add longest contour to mesh.
-mesh_points = thresholded_contours[longest_index]
+   			     
+mesh_points = thresholded_contours[longest_index]                              #First add longest contour to mesh.
 mesh_facets = vh.roundTripConnect(0,len(mesh_points)-1)				     #Create facets from the longest contour.
+
 hole_points = []  										     #Every contour other than the longest needs an interiour point.
 for i in xrange(len(thresholded_contours)):						     #Traverse all contours. 
     curr_length = len(mesh_points)									
@@ -220,7 +220,7 @@ info = triangle.MeshInfo()									     #Create triangulation object.
 info.set_points(mesh_points)									     #Set points to be triangulated.
 if(len(hole_points) > 0):									     
 	info.set_holes(hole_points)                                              #Set holes (contours) to be ignored.
-	info.set_facets(mesh_facets)       						     #Set facets.
+info.set_facets(mesh_facets)       						     #Set facets.
 triangulation = triangle.build(info,verbose=False,allow_boundary_steiner=False,#Build Triangulation.
        allow_volume_steiner=False,quality_meshing=False)
 
