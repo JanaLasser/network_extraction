@@ -2,8 +2,11 @@
 """
 Created on Mon Apr 14 11:20:41 2014
 
-@author: Ista
+@author: Jana Lasser
 """
+'''
+Copyright (C) 2015 Jana Lasser GPL-3.0
+'''
 
 import matplotlib.pyplot as plt
 import os

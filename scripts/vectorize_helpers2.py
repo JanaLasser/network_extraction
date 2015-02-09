@@ -2,8 +2,11 @@
 """
 Created on Thu Jan 15 13:34:10 2015
 
-@author: jana
+@author: Jana Lasser
 """
+'''
+Copyright (C) 2015 Jana Lasser GPL-3.0
+'''
 
 from PIL import Image
 import numpy as np

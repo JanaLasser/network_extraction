@@ -1,9 +1,23 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 15 13:34:10 2015
+'''
+    Copyright (C) 2015  Jana Lasser Max Planck Institute for Dynamics and
+    Self Organization Goettingen
 
-@author: jana
-"""
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    If you find any bugs or have any suggestions, please contact me at
+    jana.lasser@ds.mpg.de
+'''
 
 ### imports ###
 # standard imports
@@ -82,7 +96,7 @@ Optional: debug
 
 parser = argparse.ArgumentParser(description='Vectorize: a program that ' +\
     'extracts network information from a binary image containing ribbon-like,'\
-    + ' connected shapes.')
+    + ' connected shapes.\nCopyright (C) 2015 Jana Lasser')
 parser.add_argument('source',type=str,help='Complete path to the image')
 parser.add_argument('-dest', type=str, help='Complete path to the folder '\
                 + 'results will be saved to if different than source folder')
