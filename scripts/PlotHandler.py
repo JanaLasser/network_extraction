@@ -81,8 +81,7 @@ class PlotHandler(object):
         colormap = plt.get_cmap('hot')
         plt.imshow(self.background,origin='lower',alpha=0.5,cmap=colormap)
     
-    def update_mode(self,text):
-        print "update mode"      
+    def update_mode(self,text):     
         self.current_mode = self.figure.gca().set_title(text,fontsize=14)
         
     def update_action(self,text):
@@ -111,9 +110,7 @@ class PlotHandler(object):
         del self.node_list[n]
         
     def clear_selection(self):
-        #print "clear_selection: ",self.marked_list
         for key in self.marked_list.keys():
-            #print key
             self.unmark_node(key)
         self.marked_list = {}
             
@@ -126,7 +123,25 @@ class PlotHandler(object):
         if nodes in self.edge_list:
             self.edge_list[nodes].remove()
             del self.edge_list[nodes]
+            
+    def plot_and_save(self,G,name):
+    
+        figure = plt.figure()
+        ax = figure.gca()
+        pos = {}
+        for k in G.node.keys():
+            pos[k] = (G.node[k]['x'], G.node[k]['y'])
         
+        widths = np.array([G[e[0]][e[1]]['conductivity'] for e in G.edges()])
+        widths = 15./np.amax(widths)*widths
+
+        nx.draw_networkx_edges(G, pos=pos, width=widths,arrows=False)
+        root_x = G.node[0]['x']
+        root_y = G.node[0]['y']
+        ax.plot([0,root_x],[0,root_y], 'ro')
+        figure.savefig(join(self.name_dict['dest_path'],name + ".png"),dpi=600)
+        plt.close(figure)
+            
         
     
     

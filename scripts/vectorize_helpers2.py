@@ -402,14 +402,14 @@ def createGraph(adjacency_matrix,all_triangles,height):
     attr = dict(zip(G.edges(),radius_edge))
     nx.set_edge_attributes(G,'conductivity',attr)
     
-    #y = [triangle.centroid.get_y() for triangle in all_triangles]
+    #y = [triangle.get_centroid ().get_y() for triangle in all_triangles]
     #y = np.array(y)
     #y = (y + (height-y)*2)%height
     #y = list(y)
     #attr = dict(zip(np.arange(len(y)),y))
     #nx.set_node_attributes(G,'y',attr)
     
-    return G
+    return nx.connected_component_subgraphs(G)[0]
   
 def _drawGraph(G,verbose):
     '''

@@ -27,9 +27,11 @@ import numpy as np
 #####################################################
 
 class StateSnapshot(object):
-    def __init__(self,graph,selected_nodes):
+    def __init__(self,graph,selected_nodes,digraph_on,normalized):
         self.graph = graph
         self.selected_nodes = selected_nodes
+        self.digraph_on = digraph_on
+        self.normalized = normalized
         
 def load(filename):
     if filename.endswith(".gpickle"): return nx.read_gpickle(filename)
@@ -57,8 +59,16 @@ class InterActor(object):
         if dest_path == None: dest_path = source_path
         graph_name = work_name + '_graph_red1.gpickle'
         dm_name = work_name + '_dm.png'
+        orig_name = None
+        
+        for f in os.listdir(source_path):
+            if f.endswith('.tif'):
+                orig_name = f
+        if orig_name == None:
+            print "no original .tif image found!"
+            
         self.name_dict = {'work_name':work_name,
-                               'orig_name':work_name + '.' + original_image_format,
+                               'orig_name':orig_name,
                                'source_path':source_path,
                                'dest_path':dest_path,
                                'graph_name':graph_name,
@@ -71,6 +81,7 @@ class InterActor(object):
         
         #state flags
         self.select_on = False
+        self.digraph_on = False
         self.measure_on = False
         self.node_create_on = False
         self.normalized = False
@@ -79,7 +90,8 @@ class InterActor(object):
         #figure switches                       
         self.dpi = 100
         self.init_window()
-        self.CurrentStateSnapshot = StateSnapshot(self.graph,self.selected_nodes)
+        self.CurrentStateSnapshot = StateSnapshot(self.graph,self.selected_nodes,\
+        self.digraph_on,self.normalized)
         self.GH = GraphHandler.GraphHandler(self.figure,self.name_dict,\
                                             self.CurrentStateSnapshot)
         self.update_state_stack()
@@ -115,11 +127,11 @@ class InterActor(object):
         pass
 
     def init_window(self):
-        print "initializing figure"
         self.figure = plt.figure(dpi=self.dpi,figsize=(12,12)) 
         
     def update_state_stack(self):
-        self.CurrentStateSnapshot = StateSnapshot(self.graph,self.selected_nodes)
+        self.CurrentStateSnapshot = StateSnapshot(self.graph,self.selected_nodes,\
+            self.digraph_on,self.normalized)
         if len(self.state_stack) > self.max_stored_states:
             del self.state_stack[0]
             self.state_stack.append(deepcopy(self.CurrentStateSnapshot))
@@ -136,9 +148,10 @@ class InterActor(object):
             self.figure.clf()
             self.graph = self.CurrentStateSnapshot.graph
             self.selected_nodes = self.CurrentStateSnapshot.selected_nodes
+            self.digraph_on = self.CurrentStateSnapshot.digraph_on
+            self.normalized = self.CurrentStateSnapshot.normalized
             self.GH = GraphHandler.GraphHandler(self.figure, self.name_dict,\
                                                 self.CurrentStateSnapshot)
-            print self.selected_nodes
         else:
             print "no more undo-operations stored!"
         
@@ -161,7 +174,7 @@ class InterActor(object):
              
             #save current progress
             elif cmd == 's':
-                self.GH.save_graph(self.normalized)
+                self.GH.save_graph(self.digraph_on)
             
             #enter manual graph manipulation mode
             elif cmd == 'm':
@@ -172,6 +185,7 @@ class InterActor(object):
                 if not self.normalized:
                     self.GH.streamline_graph()
                     self.normalized = True
+                    self.update_state_stack()
                 else:
                     print "already streamlined!"
             
@@ -179,8 +193,12 @@ class InterActor(object):
             elif cmd == 'digraph':
                 if len(self.selected_nodes) != 1:
                     print "Select exactly one node for di-Graph creation!"
+                elif self.digraph_on == True:
+                    print "Already a digraph!"
                 else:
-                    self.GH.create_digraph(list(self.selected_nodes)[0])             
+                    self.GH.create_digraph(list(self.selected_nodes)[0]) 
+                    self.digraph_on = True
+                    self.update_state_stack()
             
             #enter trace mode (not yet implemented!)
             elif cmd == 't':

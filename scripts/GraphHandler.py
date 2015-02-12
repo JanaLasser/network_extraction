@@ -19,6 +19,7 @@ import PlotHandler
 #import numpy as np
 from os.path import join
 from PIL import Image
+from copy import deepcopy
 
 
 
@@ -52,11 +53,7 @@ class GraphHandler(object):
         self.nodemax = np.amax(np.asarray(self.graph.nodes()))
      
     def init_PlotHandler(self):
-        self.PH = PlotHandler.PlotHandler(self.figure,self.name_dict)
-        
-        print "initializing plot handler with %d nodes and %d edges"\
-                    %(len(self.graph.nodes()),len(self.graph.edges()))
-                    
+        self.PH = PlotHandler.PlotHandler(self.figure,self.name_dict)             
         self.PH.plot_graph(self.graph.nodes(data=True),\
                     self.graph.edges(data=True))  
                     
@@ -96,18 +93,16 @@ class GraphHandler(object):
                 self.PH.undraw_edge((neighbor,n))
             self.PH.unmark_node(n)
         except nx.NetworkXError:
-            print "tried to remove a node which is not there"
+            pass
         
     def create_node(self,x,y):
         node = self.nodemax+1
         radius = self.distance_map[y,x]
         self.graph.add_node(node, x=x,y=y,conductivity=radius)
-        print "node created, number ",node
         self.PH.draw_node(node,x=x,y=y)
         self.nodemax += 1            
                   
     def create_edge(self,n1,n2):
-        print self.graph[n1]
         r1 = self.graph.node[n1]['conductivity']
         r2 = self.graph.node[n1]['conductivity']
         x1 = self.graph.node[n1]['x']
@@ -117,8 +112,6 @@ class GraphHandler(object):
         radius = (r1 + r2)/2.0
         length = np.sqrt( (x1 - x2)**2 + (y1 - y2)**2)
         self.graph.add_edge(n1,n2,conductivity=radius,weight=length)
-        print "edge created: n1 radius %f, n2 radius %f, edge radius %f"\
-              %(r1,r2,radius)
         self.PH.draw_edge(n1,n2,x1,y1,x2,y2,radius)
     
     def detect_cycles(self):
@@ -148,21 +141,41 @@ class GraphHandler(object):
         new_order = 0   
         i = 0
         
+        digraph = False
+        if type(self.graph) == type(nx.DiGraph()):
+            digraph = True
+        
         while(new_order != order):
             nodelist = []
             for node in self.graph.nodes():
-                if(self.graph.degree(node)==2):
-                    neighbors = self.graph.neighbors(node)
-                    n1 = neighbors[0]
-                    n2 = neighbors[1]
-                    l1 = self.graph.edge[node][n1]['weight']
-                    l2 = self.graph.edge[node][n2]['weight']
-                    r1 = self.graph.edge[node][n1]['conductivity']
-                    r2 = self.graph.edge[node][n2]['conductivity']
-                    length = l1 + l2
-                    radius = (r1*l1+r2*l2)/(l1+l2)
-                    self.graph.add_edge(n1,n2,weight=length,conductivity = radius)
-                    nodelist.append(node)
+                if digraph:
+                    pred = self.graph.predecessors(node)
+                    succ = self.graph.successors(node)
+                    if (len(pred) == 1 and len(succ) == 1):
+                        n1 = pred[0]
+                        n2 = succ[0]
+                        l1 = self.graph.edge[n1][node]['weight']
+                        l2 = self.graph.edge[node][n2]['weight']
+                        r1 = self.graph.edge[n1][node]['conductivity']
+                        r2 = self.graph.edge[node][n2]['conductivity']
+                        length = l1 + l2
+                        radius = (r1*l1+r2*l2)/(l1+l2)
+                        self.graph.add_edge(n1,n2,weight=length,conductivity = radius)
+                        nodelist.append(node)
+                    
+                else:
+                    if(self.graph.degree(node)==2):
+                        neighbors = self.graph.neighbors(node)
+                        n1 = neighbors[0]
+                        n2 = neighbors[1]
+                        l1 = self.graph.edge[node][n1]['weight']
+                        l2 = self.graph.edge[node][n2]['weight']
+                        r1 = self.graph.edge[node][n1]['conductivity']
+                        r2 = self.graph.edge[node][n2]['conductivity']
+                        length = l1 + l2
+                        radius = (r1*l1+r2*l2)/(l1+l2)
+                        self.graph.add_edge(n1,n2,weight=length,conductivity = radius)
+                        nodelist.append(node)
                     
             for node in nodelist:
                 self.graph.remove_node(node)
@@ -195,36 +208,37 @@ class GraphHandler(object):
                 
         indices = range(0,len(nodes))
         new_node_label_dict = dict(zip(bfs_preorder_nodes,indices))
-        T = nx.relabel_nodes(T,new_node_label_dict)
-
-        nx.write_gpickle(T,join(self.name_dict['dest'],\
-                    self.name_dict['work_name'] + "_full_digraph.gpickle"))
+        T = nx.relabel_nodes(T,new_node_label_dict)        
         
+        name = self.name_dict['work_name'] + "_full_digraph"
+        nx.write_gpickle(T,join(self.name_dict['dest_path'],name+".gpickle"))
+        self.PH.plot_and_save(T,name)
+        
+        self.graph = T
         self.streamline_graph()
-        nx.write_gpickle(T,join(self.name_dict['dest'],\
-                    self.name_dict['work_name'] + "_full_digraph.gpickle"))
+        name = self.name_dict['work_name'] + "_digraph"
+        nx.write_gpickle(self.graph,join(self.name_dict['dest_path'],name + ".gpickle"))
+        self.PH.plot_and_save(self.graph,name)
+        
+
+
         
     def draw_tree(self,T):
         figure2 = plt.figure()
         nx.draw_graphviz(T,prog='dot')
-        plt.savefig(join(self.name_dict['dest'],\
+        plt.savefig(join(self.name_dict['dest_path'],\
                     self.name_dict['work_name'] + "_tree.png"))
         del figure2
         plt.close()               
       
-    def save_graph(self,normalized):
+    def save_graph(self):
         i = 1
         while True:
-            if normalized:
-                name = self.name_dict['work_name'] + '_digraph' + str(i) + '.gpickle'
-            else:
-                name = self.name_dict['work_name'] + '_new' + str(i) + '.gpickle'
+            name = self.name_dict['work_name'] + '_new' + str(i)
             dest = self.name_dict['dest_path']
             if os.path.isfile(join(dest,name)):
                 i +=1
             else:      
-                print name
-                print dest
-                nx.write_gpickle(self.graph,join(dest,name))
+                nx.write_gpickle(self.graph,join(dest,name + '.gpickle'))
+                self.PH.plot_and_save(self.graph,name)
                 break
-        print "saved graph!"

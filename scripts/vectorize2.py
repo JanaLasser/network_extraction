@@ -333,11 +333,11 @@ Redundant node removal
           graph
 """
 if redundancy == 2: 
-    vh.drawAndSafe(G,image_name,dest,redundancy,verbose)                                #draw and safe graph with redundant nodes                         
+    vh.drawAndSafe(G,image_name,dest,2,verbose)                       #draw and safe graph with redundant nodes                         
 
-if redundancy == 1:                                                            #draw and safe graph with half redundant nodes
-    G = vh.removeRedundantNodes(G,verbose,redundancy)
-    vh.drawAndSafe(G,image_name,dest,redundancy,verbose)
+if redundancy == 1 or redundancy == 2:                                                            #draw and safe graph with half redundant nodes
+    G = vh.removeRedundantNodes(G,verbose,1)
+    vh.drawAndSafe(G,image_name,dest,1,verbose)
     
 G = vh.removeRedundantNodes(G,verbose,0)                                       #draw and safe graph without redundant nodes
 vh.drawAndSafe(G,image_name,dest,0,verbose)										
