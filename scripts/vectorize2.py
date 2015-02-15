@@ -23,7 +23,6 @@
 # standard imports
 import time
 from os.path import join
-import copy	
 import ntpath
 import argparse
 
