@@ -20,7 +20,7 @@ def getImage(image_path):
     image = Image.open(image_path)
     image = image.convert('L')
     image = np.asarray(image,dtype=np.uint8)
-    return image
+    return np.flipud(image)
   
 #####################################################
 #               Internal plotting Class             #
@@ -42,8 +42,12 @@ class PlotHandler(object):
         #self.ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
         #  fancybox=True, shadow=True)
         self.name_dict = name_dict
-        self.background = getImage(join(self.name_dict['source_path'],
+        try:
+            self.background = getImage(join(self.name_dict['source_path'],
                                         self.name_dict['orig_name']))
+        except IOError:
+            print "No original .tif file found!"
+            
         self.height, self.width = self.background.shape
         
         self.node_list = {}

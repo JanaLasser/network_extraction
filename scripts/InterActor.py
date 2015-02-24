@@ -54,18 +54,12 @@ class InterActor(object):
         self.max_stored_states = 10
         
         #handling of file IO names
-        work_name, original_image_format = os.path.basename(source).split('.')
+        work_name = os.path.basename(source).split('.')[0]
         source_path = source.split(work_name)[0]
         if dest_path == None: dest_path = source_path
         graph_name = work_name + '_graph_red1.gpickle'
         dm_name = work_name + '_dm.png'
-        orig_name = None
-        
-        for f in os.listdir(source_path):
-            if f.endswith('.tif'):
-                orig_name = f
-        if orig_name == None:
-            print "no original .tif image found!"
+        orig_name = work_name + '.tif'
             
         self.name_dict = {'work_name':work_name,
                                'orig_name':orig_name,
