@@ -10,50 +10,39 @@ Copyright (C) 2015 Jana Lasser GPL-3.0
 
 import matplotlib.pyplot as plt
 import os
-#import argparse
 import networkx as nx
-#import vectorize_helpers2 as vh
 import numpy as np
-#import itertools
 import PlotHandler
-#import numpy as np
 from os.path import join
-from PIL import Image
-from copy import deepcopy
-
-
+import InterActor as IA
 
 #####################################################
 #               Internal Graph Class                #
 #####################################################
 
-def getImage(image_path):    
-    image = Image.open(image_path)
-    image = image.convert('L')
-    image = np.asarray(image,dtype=np.uint8)
-    return image
 
-def load(filename):
-    if filename.endswith(".gpickle"): return nx.read_gpickle(filename)
-    elif filename.endswith("dm.png"): return getImage(filename)
-    else:
-        raise Exception("Unknown filename ending")
-        return 
 
 class GraphHandler(object):
     
     def __init__(self,figure,name_dict,state):
-        self.figure = figure
         self.name_dict = name_dict
         self.graph = state.graph
         self.selected_nodes = state.selected_nodes
-        self.distance_map = np.flipud(load(join(name_dict['source_path'],\
-                                                     name_dict['dm_name'])))
-        self.init_PlotHandler()
+        self.distance_map = None
+        for f in os.listdir(name_dict['source_path']):
+            if f.endswith('_dm.png'):
+                self.distance_map = IA.load(join(name_dict['source_path'],f))
+        if self.distance_map == None:
+            print 'No corresponding distance map found (looking for "_dm.png")'
+            print 'GUI still functional but trying to create new nodes will '
+            print 'result in an error!'
+            IA.printHelp()
+            
+        self.init_PlotHandler(figure)
         self.nodemax = np.amax(np.asarray(self.graph.nodes()))
      
-    def init_PlotHandler(self):
-        self.PH = PlotHandler.PlotHandler(self.figure,self.name_dict)             
+    def init_PlotHandler(self,figure):
+        self.PH = PlotHandler.PlotHandler(figure,self.name_dict)             
         self.PH.plot_graph(self.graph.nodes(data=True),\
                     self.graph.edges(data=True))  
                     
@@ -100,6 +89,8 @@ class GraphHandler(object):
         radius = self.distance_map[y,x]
         self.graph.add_node(node, x=x,y=y,conductivity=radius)
         self.PH.draw_node(node,x=x,y=y)
+        self.PH.update_action("Node created at (%1.2f,%1.2f), "%(x,y)\
+            + "radius = %1.1f"%(radius))                                        #display the last action at the bottom of the figure
         self.nodemax += 1            
                   
     def create_edge(self,n1,n2):
@@ -110,9 +101,13 @@ class GraphHandler(object):
         x2 = self.graph.node[n2]['x']
         y2 = self.graph.node[n2]['y']
         radius = (r1 + r2)/2.0
+        if radius < 1.0:
+            radius = 1
         length = np.sqrt( (x1 - x2)**2 + (y1 - y2)**2)
         self.graph.add_edge(n1,n2,conductivity=radius,weight=length)
         self.PH.draw_edge(n1,n2,x1,y1,x2,y2,radius)
+        self.PH.update_action("-e: Connected n %d (r = %1.1f) to "%(n1,r1) \
+            + "n %d (r = %1.1f), edge radius = %1.1f "%(n2,r2,radius))
     
     def detect_cycles(self):
         cycles_raw = nx.algorithms.cycle_basis(self.graph)
@@ -160,7 +155,8 @@ class GraphHandler(object):
                         r2 = self.graph.edge[node][n2]['conductivity']
                         length = l1 + l2
                         radius = (r1*l1+r2*l2)/(l1+l2)
-                        self.graph.add_edge(n1,n2,weight=length,conductivity = radius)
+                        self.graph.add_edge(n1,n2,weight=length,\
+                                conductivity = radius)
                         nodelist.append(node)
                     
                 else:
@@ -174,7 +170,8 @@ class GraphHandler(object):
                         r2 = self.graph.edge[node][n2]['conductivity']
                         length = l1 + l2
                         radius = (r1*l1+r2*l2)/(l1+l2)
-                        self.graph.add_edge(n1,n2,weight=length,conductivity = radius)
+                        self.graph.add_edge(n1,n2,weight=length,\
+                                conductivity = radius)
                         nodelist.append(node)
                     
             for node in nodelist:
@@ -210,24 +207,20 @@ class GraphHandler(object):
         new_node_label_dict = dict(zip(bfs_preorder_nodes,indices))
         T = nx.relabel_nodes(T,new_node_label_dict)        
         
-        name = self.name_dict['work_name'] + "_full_digraph"
+        name = 'fullDigraph'
         nx.write_gpickle(T,join(self.name_dict['dest_path'],name+".gpickle"))
         self.PH.plot_and_save(T,name)
         
         self.graph = T
         self.streamline_graph()
-        name = self.name_dict['work_name'] + "_digraph"
+        name = 'digraph'
         nx.write_gpickle(self.graph,join(self.name_dict['dest_path'],name + ".gpickle"))
         self.PH.plot_and_save(self.graph,name)
-        
-
-
-        
+      
     def draw_tree(self,T):
         figure2 = plt.figure()
         nx.draw_graphviz(T,prog='dot')
-        plt.savefig(join(self.name_dict['dest_path'],\
-                    self.name_dict['work_name'] + "_tree.png"))
+        plt.savefig(join(self.name_dict['dest_path'],'tree.png'))
         del figure2
         plt.close()               
       

@@ -11,16 +11,11 @@ Copyright (C) 2015 Jana Lasser GPL-3.0
 
 import matplotlib.pyplot as plt
 from os.path import join
+import os
 import numpy as np
 import networkx as nx
-from PIL import Image
-from matplotlib.patches import Rectangle
-
-def getImage(image_path):    
-    image = Image.open(image_path)
-    image = image.convert('L')
-    image = np.asarray(image,dtype=np.uint8)
-    return np.flipud(image)
+import InterActor as IA
+import sys
   
 #####################################################
 #               Internal plotting Class             #
@@ -42,14 +37,20 @@ class PlotHandler(object):
         #self.ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
         #  fancybox=True, shadow=True)
         self.name_dict = name_dict
-        try:
-            self.background = getImage(join(self.name_dict['source_path'],
-                                        self.name_dict['orig_name']))
-        except IOError:
-            print "No original .tif file found!"
-            
-        self.height, self.width = self.background.shape
+        self.background = None
         
+        for f in os.listdir(self.name_dict['source_path']):
+            f_base = f.split('.')[0]
+            if f.endswith('.tif') or f_base.endswith('_orig'):
+                self.background = IA.getImage(\
+                        join(self.name_dict['source_path'],f))
+        if self.background == None:
+            print "No corresponding original image found (looking for '.tif')"
+            print "Closing the GUI."
+            IA.printHelp()
+            sys.exit()
+            
+        self.height, self.width = self.background.shape  
         self.node_list = {}
         self.edge_list = {}
         self.marked_list = {}
@@ -62,8 +63,8 @@ class PlotHandler(object):
         node_collection = dict(node_collection)
         edge_collection = edge_collection
         
-        widths = np.array([edge[2]['conductivity'] for edge in edge_collection])
-        self.width_scale_factor = 1./np.amax(widths)    
+        widths=np.array([edge[2]['conductivity'] for edge in edge_collection])
+        self.width_scale_factor = 1./np.amax(widths)*5
      
         for edge in edge_collection:
             x1 = node_collection[edge[0]]['x']
@@ -120,7 +121,7 @@ class PlotHandler(object):
             
     def draw_edge(self,n1,n2,x1,y1,x2,y2,radius):
         new_edge = self.figure.gca().plot([x1,x2],[y1,y2],\
-            linewidth=self.width_scale_factor*2*radius,color='k',zorder=2)[0]
+            linewidth=self.width_scale_factor*radius,color='k',zorder=2)[0]
         self.edge_list.update({(n1,n2):new_edge})
      
     def undraw_edge(self,nodes):

@@ -20,120 +20,163 @@ from copy import deepcopy
 from PIL import Image
 import networkx as nx
 import numpy as np
+import sys
 
 
 #####################################################
 #               Interaction Class                   #
 #####################################################
 
+#helper class to store the current state of the InterActor. Instances of 
+#StateSnapshot will be put on a stack and loaded if an "undo" action is
+#performed
 class StateSnapshot(object):
     def __init__(self,graph,selected_nodes,digraph_on,normalized):
         self.graph = graph
         self.selected_nodes = selected_nodes
         self.digraph_on = digraph_on
         self.normalized = normalized
-        
+
+#helper to load different kinds of files        
 def load(filename):
     if filename.endswith(".gpickle"): return nx.read_gpickle(filename)
     elif filename.endswith("dm.png"): return getImage(filename)
     else:
         raise Exception("Unknown filename ending")
         return 
-        
+
+#helper to load images        
 def getImage(image_path):    
     image = Image.open(image_path)
     image = image.convert('L')
     image = np.asarray(image,dtype=np.uint8)
-    return image
+    return np.flipud(image)
 
+#function to print a hopefully helpful description of what the GUI needs to run
+#correctly. It will be printed every time the GUI cannot find one of the files
+#it requires.    
+def printHelp():
+    print('''\nThe script will look for three different files it needs to load
+             within the directory it is passed at start and will fail if these
+             files can not be found. The files are:
+             
+                 - a file with the ending "_red1.gpickle"
+                   this is the graph-object we will be working on
+      
+                 - a file with the ending ".tif" or "_orig" 
+                  (format does not matter in this case)
+                  this is the original microscopy image which will be
+                  superimposed onto the visualization of the graph to assist
+                  with correct recognition of junctions
+      
+                 - a file with the ending "_dm.png"
+                   this is the distance map of the binary used to create the
+                   graph object it is needed in case we want to create new
+                   nodes so the thickness of the nodes can automatically be
+                   determined\n.
+''')
+
+#Class that handles interaction with the user. It will create instances of
+#a class for handling of a graph object (the GraphHandler) and handling of
+#the plotting i.e. the output visible to the user on the screen (PlotHandler).
+#The class supports several features like the selection, deletion and creation
+#of nodes, display of all cycles in the graph, undo of the last action,
+#creation of a digraph, removal of all redundant nodes and saving of the graph.
 class InterActor(object):
-    
-    
-    def __init__(self,source,dest_path):
-        self.state_stack = []
-        self.max_stored_states = 10
-        
-        #handling of file IO names
-        work_name = os.path.basename(source).split('.')[0]
-        source_path = source.split(work_name)[0]
-        if dest_path == None: dest_path = source_path
-        graph_name = work_name + '_graph_red1.gpickle'
-        dm_name = work_name + '_dm.png'
-        orig_name = work_name + '.tif'
+      
+    def __init__(self,source_path,dest_path):
+        self.state_stack = []                                                   #stores snapshots of current states
+        self.max_stored_states = 10                                             #defines the maximum number of possible undo actions
+
+        work_name = os.path.basename(source_path)                               #name of the directory we are working in
+        self.source_path = source_path                                          #path to the working directory
+        if dest_path == None: dest_path = source_path                           #if specified: path to the directory files will be saved to
             
-        self.name_dict = {'work_name':work_name,
-                               'orig_name':orig_name,
-                               'source_path':source_path,
-                               'dest_path':dest_path,
-                               'graph_name':graph_name,
-                               'dm_name':dm_name}
-                               
-        self.graph = load(join(self.name_dict['source_path'],\
-                                    self.name_dict['graph_name']))
-        self.selected_nodes = {}
-        self.mode_list = []
+        self.name_dict = {'work_name':work_name,                                #store names in dictionary to make things cleaner
+                          'source_path':source_path,
+                          'dest_path':dest_path}
+                          
+        self.graph = None                                                       #try to load the graph object
+        for f in os.listdir(self.name_dict['source_path']):                     #look for a file that ends with '_red1.gpickle'
+            if f.endswith('_red1.gpickle'):                                     #this corresponds to a graph which has some redundant nodes left
+                self.graph = load(join(self.name_dict['source_path'],f))
+        if self.graph == None:                                                  #if no suitable file is found, print an error message
+            print 'No corresponding .gpickle-file found!'\
+            +' (looking for _red1.gpickle)\nClosing the GUI.'
+            printHelp()                                                         #print the help message and exit the GUI
+            sys.exit()
+            
+        self.selected_nodes = {}                                                #stores the keys of the currently selected nodes
+        self.mode_list = []                                                     #list of currently switched on modes which will be displayed at the top of the figure
         
         #state flags
-        self.select_on = False
-        self.digraph_on = False
-        self.measure_on = False
-        self.node_create_on = False
-        self.normalized = False
-        self.shift_on = False
+        self.select_on = False                                                  #node selection mode on?
+        self.digraph_on = False                                                 #is the graph already a digraph?
+        self.normalized = False                                                 #has the graph already been streamlined? (redundant nodes removed)
+        self.shift_on = False                                                   #is the shift key pressed? (ugly but working modifier handling...)
         
-        #figure switches                       
-        self.dpi = 100
-        self.init_window()
-        self.CurrentStateSnapshot = StateSnapshot(self.graph,self.selected_nodes,\
-        self.digraph_on,self.normalized)
-        self.GH = GraphHandler.GraphHandler(self.figure,self.name_dict,\
-                                            self.CurrentStateSnapshot)
+        #figure initialization                       
+        self.dpi = 100                                                          #resolution, increase for super crowded graphs
+        self.figsize = (12,12)                                                  #size of the figure, tinker with this if the displayed figure does not fit your monitor
+        self.figure = plt.figure(dpi=self.dpi,figsize=self.figsize) 
+      
+        #initialize state stack and mode
+        self.CurrentStateSnapshot = StateSnapshot(self.graph,                   #take an initial snapshot and store it
+            self.selected_nodes, self.digraph_on,self.normalized)
         self.update_state_stack()
-        self.update_mode(self.name_dict['work_name'],'add')
-        self.edit_loop()      
+        
+        self.GH = GraphHandler.GraphHandler(self.figure,self.name_dict,         #initialize the graph handler
+                                            self.CurrentStateSnapshot)
 
+        self.update_mode("Image: " + self.name_dict['work_name'],'add')         #update the display at the top of the figure   
+        self.edit_loop()                                                        #start the main interaction loop     
+        
+    #function to clear the current selection of nodes    
     def clear_selection(self):
         self.selected_nodes = {}
         self.GH.clear_selection()
 
+    #helper which is called after every processing step. It redraws the
+    #canvas to update the displayed figure and updates the state stack.
     def processing_step(self):
         self.figure.canvas.draw()
         self.set_lim()
         self.update_state_stack()
         
+    #updates the mode displayed at the top of the figure
     def update_mode(self,text,action):
         if action == 'rm':
             self.mode_list.remove(text)
         elif action == 'add':
             self.mode_list.append(text)
         else:
-            print "action not recognized!"
-            
+            print "action not recognized!"          
         s = ""
         for item in self.mode_list:
             s += item + "\n"
         s.rstrip('\n')
         self.GH.PH.update_mode(s)
 
+    #intendet to fix the size of the figure but disables zoom so not functional
+    #at the moment.
     def set_lim(self):
         #plt.xlim((0,self.GH.PH.width))
         #plt.ylim((0,self.GH.PH.height))
         pass
 
-    def init_window(self):
-        self.figure = plt.figure(dpi=self.dpi,figsize=(12,12)) 
-        
+    #creates a new snapshot of the current state and saves it in state stack    
     def update_state_stack(self):
-        self.CurrentStateSnapshot = StateSnapshot(self.graph,self.selected_nodes,\
+        self.CurrentStateSnapshot=StateSnapshot(self.graph,self.selected_nodes,
             self.digraph_on,self.normalized)
         if len(self.state_stack) > self.max_stored_states:
             del self.state_stack[0]
             self.state_stack.append(deepcopy(self.CurrentStateSnapshot))
         else:
             self.state_stack.append(deepcopy(self.CurrentStateSnapshot))
-            
+    
+    #exposes the "undo" functionality of the GUI       
     def undo(self):
-        if len(self.state_stack) >= 1:
+        if len(self.state_stack) > 1:
             self.state_stack.pop()
             try:
                 self.CurrentStateSnapshot = self.state_stack[-1] 
@@ -148,13 +191,14 @@ class InterActor(object):
                                                 self.CurrentStateSnapshot)
         else:
             print "no more undo-operations stored!"
-        
+    
+    #main interaction loop    
     def edit_loop(self):
         self.print_help_message()
         while True:
-            cmd = raw_input("GE> ")
+            cmd = raw_input("geGUI> ")
 
-            #lave and maybe save before leaving
+            #leave and ask if we want to save before leaving
             if cmd == 'x':                
                 while True:
                     cmd2 = raw_input("Want to save before leaving? 'y/n' ")
@@ -194,14 +238,6 @@ class InterActor(object):
                     self.digraph_on = True
                     self.update_state_stack()
             
-            #enter trace mode (not yet implemented!)
-            elif cmd == 't':
-                self.trace_mode()
-            
-            #redraw the current figure (not sure if functional / needed)
-            elif cmd == 'r':
-                self.init_window()
-            
             #display help again
             elif cmd == 'h':
                 self.print_help_message()
@@ -211,71 +247,65 @@ class InterActor(object):
                 print "Command not recognized."
                 
     def print_help_message(self):
-        print """ GraphEdit - edits graphs in networkx format.
+        print """
         Available commands:
         
         s       - Save current graph
-        r       - Show window again
         m       - Enter manipulation mode
-        norm    - Streamline graph
+        norm    - Streamline graph (remove all redundant nodes)
         digraph - Create and save digraph
-        t       - Enter trace mode (not yet implemented)
         h       - Print help message
         x       - Exit
         """
     
     def manipulation_mode(self):
         print """
-        Press 'b' to enter node manipulation mode:
+        b       - activate node manipulation:
                   Select and deselect nodes by clicking on them.
-                  Create new nodes by shift-clicking on the figure.
-        Press 'm' to show cycles
-        Press 'a' to clear the current node selection
-        Press 'd' to delete selected node(s) and adjacent edges
-        Press 'e' to connect all selected nodes
-        Press 'z' to undo the last action
-        
-        """
-        
-        self.update_mode("Manipulation Mode","add") 
-        self.figure.canvas.draw()
-        
+                  Create new nodes by shift-clicking on the canvas.
+        m       - show cycles in the graph
+        a       - clear the current node selection
+        d       - delete selected node(s) and adjacent edges
+        e       - connect two selected nodes
+        z       - undo the last action
+        ENTER   - leave manipulation mode
+       
+        """     
+        self.update_mode("-m: Manipulation Mode","add") 
+        self.figure.canvas.draw()   
         cid_press = self.figure.canvas.mpl_connect('key_press_event',
-                 self.manipulation_key_press)
-                 
+                 self.manipulation_key_press)                 
         raw_input()
         
         if self.select_on:
-            self.update_mode("-b: Node Manipulation",'rm')
+            self.update_mode("-b: Node Manipulation activated",'rm')
             self.figure.canvas.mpl_disconnect(self.cid_click)
             self.select_on = False
-        self.update_mode("Manipulation Mode",'rm')
+        self.update_mode("-m: Manipulation Mode",'rm')
         self.figure.canvas.draw()
         self.figure.canvas.mpl_disconnect(cid_press)
-        
-                 
-                 
-                 
-    def manipulation_key_press(self,event):
-        
-        #node selection mode
+    
+    #function to detect key presses in manipulation mode                
+    def manipulation_key_press(self,event):      
+        #activate node selection mode
         if event.key == 'b':
             if self.select_on:
-                self.update_mode("-b: Node Manipulation",'rm')
+                self.update_mode("-b: Node Manipulation activated",'rm')
                 self.figure.canvas.draw()
                 self.figure.canvas.mpl_disconnect(self.cid_click)
                 self.select_on = False
             else:
-                self.update_mode("-b: Node Manipulation",'add')
+                self.update_mode("-b: Node Manipulation activated",'add')
                 self.figure.canvas.draw()
-                self.cid_mod1 = self.figure.canvas.mpl_connect('key_press_event',
-                                self.modifier_key_on)
-                self.cid_mod1 = self.figure.canvas.mpl_connect('key_release_event',
-                                self.modifier_key_off)
-                self.cid_click = self.figure.canvas.mpl_connect('button_press_event',
-                    self.on_click_select)
+                self.cid_mod1 = self.figure.canvas.mpl_connect(\
+                    'key_press_event', self.modifier_key_on)
+                self.cid_mod1 = self.figure.canvas.mpl_connect(\
+                    'key_release_event', self.modifier_key_off)
+                self.cid_click = self.figure.canvas.mpl_connect(\
+                    'button_press_event', self.on_click_select)
                 self.select_on = True
-            
+        
+        #show cylces in the graph
         if event.key == 'm':
             print "looking for cycles"
             cycles = self.GH.detect_cycles()
@@ -287,13 +317,15 @@ class InterActor(object):
                 self.GH.PH.update_action("-m: No Cycles detected")
                 self.figure.canvas.draw()
                 print "no cycles detected!"
-               
+        
+        #clear the current node selection
         if event.key == 'a':
             print "clearing current selection:"
             self.GH.PH.update_action("-a: Selection cleared")
             self.clear_selection()
             self.processing_step()
-            
+         
+        #delete currently selected nodes
         if event.key == 'd':
             print "deleting selected nodes:"
             self.GH.PH.update_action("-d: Selected nodes deleted")
@@ -306,11 +338,10 @@ class InterActor(object):
         #create a new edge between two selected nodes    
         if event.key == 'e':
             print "connecting selected nodes"
-            if len(self.selected_nodes) > 2:
-                self.GH.PH.update_action("-e: Too many nodes selected!")
+            if len(self.selected_nodes) != 2:
+                self.GH.PH.update_action("-e: Not exactly two nodes selected!")
                 print('more than two nodes selected, aborting...')
                 return
-            self.GH.PH.update_action("-e: Connected selected nodes")
             n1 = self.selected_nodes.keys()[0]
             n2 = self.selected_nodes.keys()[1]
             self.GH.create_edge(n1,n2)
@@ -322,21 +353,9 @@ class InterActor(object):
             print "undoing last action"
             self.undo()
             self.figure.canvas.draw()
-            self.set_lim()
-            
-        #does not work! diameters screwed!
-        #if event.key == 'q':
-        #    print "entered vein measuring mode"
-        #    if self.measure_on:
-        #        self.figure.canvas.mpl_disconnect(self.cid_measure)
-        #        print "exited measuring mode"
-        #    else:   
-        #        self.cid_measure = self.figure.canvas.mpl_connect('button_press_event',
-        #            self.on_click_measure)
-        #        self.measure_on = True
-        #        print "entered measuring mode"
-            
-    
+            self.set_lim()            
+ 
+    #handling of "shift" key modifier   
     def modifier_key_on(self,event):
         if event.key == 'shift':
             self.shift_on = True
@@ -344,50 +363,30 @@ class InterActor(object):
         if event.key == 'shift':
             self.shift_on = False
     
+    #handling of node selection via clicks on the figure
     def on_click_select(self,event):
-        if self.shift_on:
-            self.GH.create_node(event.xdata, event.ydata)
-            self.GH.PH.update_action("Node created at (%1.2f,%1.2f)"\
-                    %(event.xdata,event.ydata))
+        if self.shift_on:                                                       #detect if shift is currently pressed
+            self.GH.create_node(event.xdata, event.ydata)                       #if yes, create a new node
             self.processing_step()
         else:
-            tmp = self.GH.get_node_from_xy(event.xdata, event.ydata)
-            if tmp != None:
+            tmp = self.GH.get_node_from_xy(event.xdata, event.ydata)            #if shift is not pressed, try to mark the node nearest to the click
+            if tmp != None:                                                     #if we found a node in the vicinity, mark it
                 n,x_s,y_s = tmp
                 x = self.graph.node[n]['x']
                 y = self.graph.node[n]['y']
-                if n in self.selected_nodes:
+                if n in self.selected_nodes:                                    #if the node is already marked, unmark it
                     self.GH.PH.unmark_node(n)
                     del self.selected_nodes[n]
                     self.GH.PH.update_action("Node unmarked at (%1.2f,%1.2f)"\
                         %(x,y))
-                else:
+                else:                                                           #if not, mark it
                     self.GH.PH.mark_node(n,x_s,y_s)
                     self.selected_nodes.update({n:(x_s,y_s)})
                     self.GH.PH.update_action("Node marked at (%1.2f,%1.2f)"\
                         %(x,y))
                 self.figure.canvas.draw()
                 self.set_lim()
-            else:
+            else:                                                               #if we didn't find a node, complain
                 self.GH.PH.update_action("Click nearer!")
-
-    #def on_click_measure(self,event):
-    #    self.GH.measure_diameter(event.xdata, event.ydata)
-        
-    
-    #def trace_mode(self):
-    #    print """
-    #    Create a new part of the network by either clicking
-    #    on an existing node or on free space to create a new node.
-    #    Each click will create a new node wich will be connected to
-    #    the previously placed node.
-    #    Press 't' to start tracing
-    #    Press 'e' to end tracing
-    #    Press ENTER when done.
-    #    """
-         
-    #def trace_key_press(self,event):
-    #    return
-        
         
         
