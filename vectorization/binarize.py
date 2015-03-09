@@ -6,7 +6,7 @@ Created on Fri Sep 20 10:32:18 2013
 """
 from os.path import join
 import cv2
-from skimage.morphology import disk
+from skimage.morphology import disk,closing, remove_small_objects,opening
 from skimage.filter import rank
 import numpy as np
 import scipy.misc
@@ -40,7 +40,7 @@ image = vh.RGBtoGray(image)
 image = image.astype(np.uint8)
 					
 #blur image to get rid of most of the noise
-blur_kernel = (5,5)
+blur_kernel = (3,3)
 image = cv2.blur(image, blur_kernel)
 
 #perform local histogram equalization to emphasize edges
@@ -55,9 +55,13 @@ image = 0.5*image_eq + 0.5*image
 threshold = vh.otsu_threshold(image)-t_mod
 
 #threshold and save image
-image = np.where(image > threshold,1,0)
-scipy.misc.imsave(join(dest,image_name + "_binary.png"),image)
+image = np.where(image > threshold,1.0,0.0)
+image = opening(image,disk(3))
+image = closing(image,disk(7))
+image = remove_small_objects(image.astype(bool),min_size=50,connectivity=1)
 
+
+scipy.misc.imsave(join(dest,image_name + "_binary.png"),image)
 print "image processed with t_mod = %d" %t_mod
 
 
