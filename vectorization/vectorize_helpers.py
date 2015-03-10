@@ -533,6 +533,8 @@ def _drawGraph(G,verbose):
         x = node[1]['x']
         y = node[1]['y']
         typ = len(nx.neighbors(G,node[0]))
+        if typ > 3:
+            typ = 3
         c = colors[typ]
         plt.plot(x,y,'o',color=c,markersize=8,mec=c,alpha=0.8,mew=1)
         
@@ -600,6 +602,11 @@ def removeRedundantNodes(G,verbose,mode):
         else:
             for node in nodelist:
                 G.remove_node(node)
+                
+        length = 0
+        for edge in G.edges(data=True):
+            length += edge[2]['weight']
+        print "total network length", length
         
         order = new_order
         new_order = G.order() 
@@ -621,16 +628,17 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose):
         image_name: string, name of the file saved plus added "_graph" extension
         dest: string, destination where the drawn graph will be saved
     '''
-    plt.clf()
-    _drawGraph(G,verbose)
-    start = time.clock()
+    leaf = False
+    start = time.clock()    
     if redundancy == 0: mode = "red0"   
     elif redundancy == 1: mode = "red1"
-    else: mode = "red2" 
-        
-    
-    plt.savefig(join(dest,image_name + "_graph_" + mode + ".pdf"))
+    else: mode = "red2"   
+    if not leaf:
+        plt.clf()
+        _drawGraph(G,verbose)          
+        plt.savefig(join(dest,image_name + "_graph_" + mode + ".png"),dpi=600)
     figure_save = time.clock()
+    
     nx.write_gpickle(G,join(dest,image_name + "_graph_" + mode + ".gpickle"))
     graph_save = time.clock()
     if verbose:
@@ -667,11 +675,11 @@ def drawTriangulation(h,triangles,image_name,dest):
             c = colors[t.get_typ()][0]
             zorder = colors[t.get_typ()][1]
             plt.plot(x,y,'o',color=c,linewidth=1.5,zorder=zorder,
-                     markersize=3.0,mew=0,alpha=1.0)
+                     markersize=0.1,mew=0,alpha=1.0)
             plt.fill(x,y,facecolor=c,alpha=0.6,\
-                     edgecolor=c,linewidth=0.5)
+                     edgecolor=c,linewidth=0.05)
             
-    plt.savefig(join(dest,image_name + "_triangulation.pdf"))
+    plt.savefig(join(dest,image_name + "_triangulation.png"),dpi=1200)
     plt.close()
    
 def drawContours(height,contour_list,image_name,dest): 
@@ -697,8 +705,8 @@ def drawContours(height,contour_list,image_name,dest):
         c.append((c[0][0],c[0][1]))
         c = np.asarray(c)
         plt.plot(c[0:,0],height-c[0:,1],color="black",marker="o", \
-                 markersize=4.5,mfc="FireBrick", mew = 0.1, alpha=0.7, \
-                 linewidth = 1.7)
+                 markersize=0.1,mfc="FireBrick", mew = 0.1, alpha=0.7, \
+                 linewidth = 0.05)
                  
         #optional plotting of coordinates       
         if coordinates:
@@ -706,6 +714,6 @@ def drawContours(height,contour_list,image_name,dest):
                 coordinate_string = "(" + str(point[0]) + "," + str(point[1]) + ")"
                 plt.text(point[0],point[1],coordinate_string,fontsize=0.1)
                 
-    plt.savefig(join(dest,image_name + "_contours.pdf"),dpi=1200)
+    plt.savefig(join(dest,image_name + "_contours.png"),dpi=1200)
     plt.close()
  

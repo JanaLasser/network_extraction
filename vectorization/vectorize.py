@@ -31,7 +31,8 @@ import numpy as np
 import meshpy.triangle as triangle	
 #import triangle_wrapper as triangle
 import scipy.misc
-from skimage.morphology import binary_opening, binary_closing
+from skimage.morphology import binary_opening, binary_closing, disk
+from skimage.morphology import remove_small_objects
 	
 # helper functions
 import vectorize_helpers as vh
@@ -134,9 +135,10 @@ if image.ndim > 2:
     image = vh.RGBtoGray(image)                                                #In case it is not yet grayscale, convert to grayscale.  
 image = np.where(image < 127,0,1)                                              #In case it is not yet binary, perform thresholding  
 
-kernel = np.ones((3,3),np.int)                                                 #standard binary image noise-removal with opening followed by closing
-image = binary_opening(image,kernel)                                           #maybe remove this processing step if depicted structures are really tiny
-image = binary_closing(image,kernel)
+                                                                               #standard binary image noise-removal with opening followed by closing
+image = binary_opening(image,disk(3))                                          #maybe remove this processing step if depicted structures are really tiny
+image = binary_closing(image,disk(3))
+image = remove_small_objects(image.astype(bool),min_size=3000,connectivity=1)
 
 distance_map = vh.cvDistanceMap(image).astype(np.int)                          #Create distance map
 height,width = distance_map.shape

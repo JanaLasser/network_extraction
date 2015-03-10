@@ -38,6 +38,7 @@ class PlotHandler(object):
         #  fancybox=True, shadow=True)
         self.name_dict = name_dict
         self.background = None
+        self.markersize = 6
         
         for f in os.listdir(self.name_dict['source_path']):
             f_base = f.split('.')[0]
@@ -80,7 +81,7 @@ class PlotHandler(object):
             x = node_collection[node]['x']
             y = node_collection[node]['y']
             new_node = self.figure.gca().plot(x,y,marker='o',color='b',\
-                    markersize=5,zorder=9)[0]
+                    markersize=self.markersize,zorder=9)[0]
             self.node_list.update({node:new_node})
         
         colormap = plt.get_cmap('hot')
@@ -98,7 +99,7 @@ class PlotHandler(object):
             self.marked_list[n]
         except KeyError:   
             new_mark = self.figure.gca().plot(x_s,y_s,marker='o',color='r',\
-                                            markersize=7,zorder=10)[0]
+                markersize=self.markersize+2,zorder=10)[0]
             self.marked_list[n]=new_mark
 
     def unmark_node(self,n):
@@ -107,7 +108,7 @@ class PlotHandler(object):
         
     def draw_node(self,node,x,y):
         new_node = self.figure.gca().plot(x,y,marker='o', color='b',\
-                                            markersize=5,zorder=9)[0]
+            markersize=self.markersize,zorder=9)[0]
         self.node_list.update({node:new_node})
  
     def undraw_node(self,n):

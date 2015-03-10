@@ -1,38 +1,28 @@
-
+# -*- coding: utf-8 -*-
 """
-Created on Thu Jan 22 14:36:58 2015
+Created on Mon Mar  2 12:33:45 2015
 
-@author: Jana Lasser
+@author: jana
 """
 
-'''
-Copyright (C) 2015 Jana Lasser GPL-3.0
-'''
 
-#python setup_functions.py build_ext --inplace
 
-from libc.math cimport sqrt
-from libc.math cimport round
+from math import sqrt
 import numpy as np
-cimport numpy as np
-#import scipy
-from scipy.sparse.lil import lil_matrix
+import scipy
+import scipy.sparse
 from bisect import bisect_left
-
-ctypedef np.int_t DTYPE_t 
 
 
 #helper function to calculate the distance between two points on a plane
-
-
-cdef distance(Cpoint p1,Cpoint p2):
-    cdef double dist = sqrt((p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y))
+def distance(p1,p2):
+    dist = sqrt((p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y))
     return dist
 
 #extension of the scipy.sparse lil_matrix which implements a function for
 #column and row removal 
-class lil2(lil_matrix):
-    def removecol(self,int j):
+class lil2(scipy.sparse.lil.lil_matrix):
+    def removecol(self,j):
         if j < 0:
             j += self.shape[1]
 
@@ -41,7 +31,7 @@ class lil2(lil_matrix):
 
         rows = self.rows
         data = self.data
-        cdef int i
+
         for i in xrange(self.shape[0]):
             pos = bisect_left(rows[i], j)
             if pos == len(rows[i]):
@@ -56,7 +46,7 @@ class lil2(lil_matrix):
 
         self._shape = (self._shape[0],self._shape[1]-1)
 
-    def removerow(self,int i):
+    def removerow(self,i):
         if i < 0:
             i += self.shape[0]
 
@@ -77,29 +67,15 @@ coordinates are equal (not if they are the same object!)
 Also implements a __str__ method for debugging reasons which allows to
 visualize a point as "(x,y)".
 '''   
-cdef class Cpoint:    
-    cdef double x,y
+
+class Cpoint:    
     
-    def __cinit__(self,float x,float y):
+    def __init__(self,x,y):
         self.x = x
-        self.y = y     
+        self.y = y      
     
-    def __richcmp__(Cpoint self, Cpoint other not None, int op):
-        """Cython equivalent of functools.totalordering
-        Implements compare for Cpoints, check x coordinate first then y"""
-        cdef int compare
-        if self.x > other.x:
-            compare = 1
-        elif self.x < other.x:
-            compare = -1
-        else:
-            if self.y > other.y:
-                compare = 1
-            elif self.y < other.y:
-                compare = -1
-            else:
-                compare = 0
-        return richcmp_helper(compare, op)
+    def __cmp__(self, other):
+        return cmp((self.x,self.y), (other.x,other.y))
         
     def get_x(self):
         return self.x
@@ -108,8 +84,8 @@ cdef class Cpoint:
         return self.y
         
     def __str__(self):
-        cdef str s = "(" + str(self.x) + "," + str(self.y) + ")"
-        return s
+        s = "(" + str(self.x) + "," + str(self.y) + ")"
+        return s 
 
 '''        
 Custom class for a segment in 2D. A segment consists of two Cpoints. Segments
@@ -132,11 +108,8 @@ Exported methods:
    - get_cp:       returns the shared point between two segments or None if
                    there is no shared point
 '''
-cdef class Csegment:    
-    cdef Cpoint p1,p2,midpoint
-    cdef CshapeTriangle triangle1,triangle2
-    
-    def __init__(Cpoint self,Cpoint p1, Cpoint p2):      
+class Csegment:    
+    def __init__(self,p1, p2):      
         #order points so alsways p1 < p2
         if p1 < p2:
             self.p1 = p1
@@ -145,48 +118,36 @@ cdef class Csegment:
             self.p1 = p2
             self.p2 = p1         
         self.midpoint = Cpoint((self.p1.x + self.p2.x)/2, (self.p1.y + self.p2.y)/2)
+        self.triangle1 = None
+        self.triangle2 = None
    
     def __str__(self):
         return "(%1.2f,%1.2f) -> (%1.2f,%1.2f)"%\
                 (self.p1.x,self.p1.y,self.p2.x,self.p2.y)
-
-    def __richcmp__(Csegment self, Csegment other not None, int op):
-        """Cython equivalent of functools.totalordering
-        Implements compare for Cpoints, check p1 first then p2"""
-        cdef int compare
-        if self.p1 > other.p1:
-            compare = 1
-        elif self.p1 < other.p1:
-            compare = -1
-        else:
-            if self.p2 > other.p2:
-                compare = 1
-            elif self.p2 < other.p2:
-                compare = -1
-            else:
-                compare = 0
-        return richcmp_helper(compare, op)
+                
+    def __cmp__(self, other):
+        return cmp((self.p1,self.p2),(other.p1,other.p2))
      
-    cpdef get_p1(self): return self.p1
-    cpdef get_p2(self): return self.p2
-    cpdef get_triangle1(self): return self.triangle1 
-    cpdef set_triangle1(self,CshapeTriangle t): self.triangle1 = t           
-    cpdef get_triangle2(self): return self.triangle2          
-    cpdef set_triangle2(self,CshapeTriangle t): self.triangle2 = t             
-    cpdef get_midpoint(self): return self.midpoint     
+    def get_p1(self): return self.p1
+    def get_p2(self): return self.p2
+    def get_triangle1(self): return self.triangle1 
+    def set_triangle1(self,t): self.triangle1 = t           
+    def get_triangle2(self): return self.triangle2          
+    def set_triangle2(self,t): self.triangle2 = t             
+    def get_midpoint(self): return self.midpoint     
        
-    cpdef connects(self,Csegment other):
+    def connects(self, other):
         if (self == other): return False              
         elif((self.p1 == other.p1) or (self.p2 == other.p1) \
             or (self.p1 == other.p2) or (self.p2 == other.p2)): return True        
         else: return False
                       
-    cpdef get_cp(Csegment self,Csegment seg):
-        cdef Cpoint cp 
+    def get_cp(self, seg):
         if(self.connects(seg)):
             if(self.p1 == seg.p1 or self.p1 == seg.p2): cp = self.p1             
-            else: cp = self.p2             
-        else: cp = None
+            else: cp = self.p2  
+        else:
+            cp = None            
         return cp
  
 '''
@@ -210,22 +171,12 @@ Members:
             
 Exposed functions:
     
-'''       
-cdef class CshapeTriangle:
-    cdef Csegment edge1, edge2, edge3
-    cdef Cpoint p1, p2, p3    
-    cdef typ 
-    cdef Cpoint centroid
-    cdef double radius
-    cdef int index
-    #might be more convenient to store them in a list but so far they are
-    #three separate members
-    cdef CshapeTriangle neighbor1, neighbor2, neighbor3
-    cdef Cpoint h, opp_point, half_ext_edge
+'''      
+class CshapeTriangle:
    
     #Constructor creates a triangle from three segments, sets the three points
     #of the triangle and the segment's pointer to the newly created triangle
-    def __init__(self, Csegment edge1, Csegment edge2, Csegment edge3):
+    def __init__(self, edge1, edge2, edge3):
         #type cannot be determined at creation and has to be set at a later
         #point via the set_type function
         self.typ = None                     
@@ -242,25 +193,25 @@ cdef class CshapeTriangle:
             self.p3 = self.edge2.p1                  
         #make sure that whenever a new triangle is constructed, the edges it
         #is composed of have their pointers set to the new triangle
-        if edge1.triangle1 == None: edge1.triangle1 = self
+        if type(edge1.triangle1) == type(None): edge1.triangle1 = self
         else: edge1.triangle2 = self
-        if edge2.triangle1 == None: edge2.triangle1 = self
+        if type(edge2.triangle1) == type(None): edge2.triangle1 = self
         else: edge2.triangle2 = self 
-        if edge3.triangle1 == None: edge3.triangle1 = self
+        if type(edge3.triangle1) == type(None): edge3.triangle1 = self
         else: edge3.triangle2 = self
     
     #getter and setter for the member variables
-    cpdef get_radius(self): return self.radius
-    cpdef get_centroid(self): return self.centroid      
-    cpdef get_p1(self): return self.p1       
-    cpdef get_p2(self): return self.p2       
-    cpdef get_p3(self): return self.p3   
-    cpdef get_index(self): return self.index
-    cpdef set_index(self,index): self.index = index
-    cpdef get_typ(self): return self.typ 
-    cpdef get_neighbor1(self): return self.neighbor1
-    cpdef get_neighbor2(self): return self.neighbor2
-    cpdef get_neighbor3(self): return self.neighbor3
+    def get_radius(self): return self.radius
+    def get_centroid(self): return self.centroid      
+    def get_p1(self): return self.p1       
+    def get_p2(self): return self.p2       
+    def get_p3(self): return self.p3   
+    def get_index(self): return self.index
+    def set_index(self,index): self.index = index
+    def get_typ(self): return self.typ 
+    def get_neighbor1(self): return self.neighbor1
+    def get_neighbor2(self): return self.neighbor2
+    def get_neighbor3(self): return self.neighbor3
     
     #set_typ is a function typically called after all triangles have been
     #initially created and all segment-pointers to triangles have been set.
@@ -275,11 +226,9 @@ cdef class CshapeTriangle:
     #distance map of the image is called.
     #This is done only after determination of the triange's type because 
     #methods for setting the radius and centroid differ depending on type.
-    cpdef set_typ(self,np.ndarray distance_map):
+    def set_typ(self, distance_map):
         #helper variables
-        cdef int neighbors = 0
-        cdef Cpoint h1,h2,h3
-        cdef double abs_ab1,abs_ab2,abs_ab3
+        neighbors = 0
         
         #set the triangels neighbors based on the pointers stored in the edges
         if self.edge1.triangle1 == self: self.neighbor1 = self.edge1.triangle2           
@@ -290,11 +239,11 @@ cdef class CshapeTriangle:
         else: self.neighbor3 = self.edge3.triangle1
   
         #count the number of non-None neighbors      
-        if self.neighbor1 != None:
+        if type(self.neighbor1) != type(None):
             neighbors += 1
-        if self.neighbor2 != None:
+        if type(self.neighbor2) != type(None):
             neighbors += 1
-        if self.neighbor3 != None:
+        if type(self.neighbor3) != type(None):
             neighbors += 1
             
         #junction triangle if we have 3 neighbors
@@ -329,27 +278,27 @@ cdef class CshapeTriangle:
             
             #find out which of the edges is the external edge (edge shared
             #with the contour) and set its opposing point accordingly
-            if self.neighbor1 == None: #-> edge1 is the external edge
+            if type(self.neighbor1) == type(None): #-> edge1 is the external edge
                 self.half_ext_edge = self.edge1.get_midpoint()
                 self.opp_point = self.edge2.get_cp(self.edge3)
                 self.neighbor1 = self.neighbor3
                 self.neighbor3 = None                            
-            elif self.neighbor2 == None:# -> edge2 is the external edge
+            elif type(self.neighbor2) == type(None):# -> edge2 is the external edge
                 self.half_ext_edge = self.edge2.get_midpoint()
                 self.opp_point = self.edge1.get_cp(self.edge3)
                 self.neighbor2 = self.neighbor3
                 self.neighbor3 = None
             else: # -> edge3 is the external edge
                 self.half_ext_edge = self.edge3.get_midpoint()
-                self.opp_point = self.edge1.get_cp(self.edge2)          
+                self.opp_point = self.edge1.get_cp(self.edge2)  
             
         #end triangle if we have one neighbor
         elif neighbors == 1:
             self.typ = "end"
-            if self.neighbor3 != None:
+            if type(self.neighbor3) != type(None):
                 self.neighbor1 = self.neighbor3
                 self.neighbor3 = None
-            elif self.neighbor2 != None:
+            elif type(self.neighbor2) != type(None):
                 self.neighbor1 = self.neighbor2
                 self.neighbor2 = None
             else:
@@ -371,17 +320,8 @@ cdef class CshapeTriangle:
     #cases for 100k triangles is completely normal and nothing to worry about).
     #If the number of defaults does not get out of hand, the impact of the 
     #default-triangle-radii will be negligible
-    cdef set_radius_and_center(CshapeTriangle self, \
-                                 np.ndarray[DTYPE_t,ndim=2] distance_map):
-        #helper variables
-        cdef double x1, y1, x2, y2, length, lamb, curr_x, curr_y
-        cdef int int_x, int_y
-        cdef double direction_x, direction_y, max_distance
-        cdef double max_x, max_y
-        #use typed indexing for fast array acces
-        DTYPE = np.int
-        cdef DTYPE_t curr_distance
-        assert distance_map.dtype == DTYPE   
+    def set_radius_and_center(self, distance_map):
+
         #these initializations are the same for all triangles
         max_distance = 0
         max_x = -1
@@ -420,9 +360,9 @@ cdef class CshapeTriangle:
                 curr_y += lamb*direction_y
             self.radius = max_distance       
             #set the center to the "tip point"
-            if self.edge1.triangle2 != None:
+            if type(self.edge1.triangle2) != type(None):
                 self.centroid = self.edge2.get_cp(self.edge3)
-            elif self.edge2.triangle2 != None:
+            elif type(self.edge2.triangle2) != type(None):
                 self.centroid = self.edge1.get_cp(self.edge3)
             else:
                 self.centroid = self.edge1.get_cp(self.edge2)
@@ -515,29 +455,36 @@ cdef class CshapeTriangle:
         #we ignore them in the following processing anyways.
         else:
             return 0
-        
-    def __richcmp__(CshapeTriangle self, CshapeTriangle other, int op):            
-        #special case if we try to compare to a None-object
-        cdef int compare
-        if type(other) == type(None):
-            compare = -1
-            return richcmp_helper(compare,op)
-        #we only need the "==" comparison later on so we do not resolve the
-        #other cases. It is kind of subjective how to handle "<" and ">" any-
-        #ways.
-        if op == 0 or op == 1 or op == 4 or op == 5:
-            return False
-        #obviously, triangles are euqal if all their points are the same (not
-        #only if they are the same object!)
-        if ( (self.p1 == other.p1 or self.p1 == other.p2 or self.p1 == other.p3) and \
-             (self.p2 == other.p1 or self.p2 == other.p2 or self.p2 == other.p3) and \
-             (self.p3 == other.p1 or self.p3 == other.p2 or self.p3 == other.p3) ):
-            compare = 0
-        else: compare = 1 
-        return richcmp_helper(compare,op)
 
-#reusable helper for __richcmp__                
-cdef inline bint richcmp_helper(int compare, int op):
+    def __eq__(self, other):    
+        if ( (self.p1==other.p1 or self.p1==other.p2 or self.p1==other.p3) and \
+               (self.p2==other.p1 or self.p2==other.p2 or self.p2==other.p3) and \
+               (self.p3==other.p1 or self.p3==other.p2 or self.p3==other.p3) ):
+            compare = 0
+        else: compare = 1
+        return richcmp_helper(compare, 2)
+            
+    def __ne__(self, other):
+        if ( (self.p1!=other.p1 and self.p1!=other.p2 and self.p1!=other.p3) and \
+               (self.p2!=other.p1 and self.p2!=other.p2 and self.p2!=other.p3) and \
+               (self.p3!=other.p1 and self.p3!=other.p2 and self.p3!=other.p3) ):
+            compare = -1
+        else: compare = 0
+        return richcmp_helper(compare, 3)
+        
+    def __lt__(self, other):
+        return NotImplemented
+    
+    def __le__(self, other):
+        return NotImplemented
+    
+    def __gt__(self, other):
+        return NotImplemented
+        
+    def __ge__(self, other):
+        return NotImplemented
+        
+def richcmp_helper(compare, op):
     if op == 2: # ==
         return compare == 0
     elif op == 3: # !=
@@ -565,17 +512,22 @@ cdef inline bint richcmp_helper(int compare, int op):
 #segments created this way to construct the triangles and set the neighborhood-
 #relations accordingly.
 #Returns a list of the newly created triangles.
-def CbuildTriangles(list points, list triangle_point_indices):
-    #definition of helper variables
-    cdef i
-    cdef dict segment_dict = {}
-    cdef int x1, x2, x3, y1, y2, y3, N
-    cdef Cpoint p1,p2,p3
-    cdef Csegment s1,s2,s3
-    cdef CshapeTriangle new_trianlge
-    cdef list t,triangles
+def CbuildTriangles(points, triangle_point_indices):
+    segment_dict = {}
     
     triangles = []
+
+    #mirror along x axis
+    #max_height = 0
+    #for p in points:
+    #    if p[1] > max_height:
+    #        max_height = p[1]
+    #for p,i in zip(points,range(len(points))):
+    #    y = p[1]
+    #    x = p[0]
+    #    y = max_height - y
+    #    points[i] = [x,y]
+    
     N = len(triangle_point_indices)
     for i in range(N):
         #resolve the indices to coordinates
@@ -622,25 +574,23 @@ def CbuildTriangles(list points, list triangle_point_indices):
         
         #build the triangles with segments taken from the segment dict, 
         #ensuring the triangle's neighbors can be set correctly
-        new_triangle = CshapeTriangle(segment_dict[key1],segment_dict[key2],segment_dict[key3])
-        triangles.append(new_triangle)
-    
+        new_triangle = CshapeTriangle(segment_dict[key1],segment_dict[key2],\
+                                      segment_dict[key3])
+        triangles.append(new_triangle)    
     return triangles
     
-cdef get_neighbor(CshapeTriangle triangle,Csegment edge):
-    cdef CshapeTriangle neighbor = edge.get_triangle1()
+def get_neighbor(triangle,edge):
+    neighbor = edge.get_triangle1()
     if neighbor == triangle:
         neighbor = edge.get_triangle2()
     else:
         neighbor = edge.get_triangle1()
     return neighbor
 
-def CcreateTriangleAdjacencyMatrix(list triangles not None):
-    cdef int dim, j, i
-    cdef CshapeTriangle neighbor1, neighbor2, neighbor3,t
+def CcreateTriangleAdjacencyMatrix(triangles):
                 
     dim = len(triangles)
-    adjacency_matrix = lil_matrix((dim,dim))
+    adjacency_matrix = scipy.sparse.lil_matrix((dim,dim))
     
     for j in range(dim):
         adjacency_matrix[j,j]=0
@@ -679,12 +629,8 @@ def CcreateTriangleAdjacencyMatrix(list triangles not None):
                           
     return adjacency_matrix
     
-def CbruteforcePruning(adjacency_matrix,np.ndarray triangles,int order,verbose):
-    cdef int curr_order = 0
-    cdef int i
-    cdef list indices
-    cdef np.ndarray rows
-
+def CbruteforcePruning(adjacency_matrix, triangles, order,verbose):
+    curr_order = 0
     while curr_order < order:
         if verbose:
             print "\t from bruteforcePruning: current order",curr_order
