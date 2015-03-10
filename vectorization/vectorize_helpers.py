@@ -486,13 +486,20 @@ def createGraph(adjacency_matrix,all_triangles,height):
     
     #set thickness of edges as mean over the thickness of the nodes it connects
     radius_edge = [(G.node[edge[0]]['conductivity'] + \
-                      G.node[edge[1]]['conductivity'])/2.0 for edge in G.edges()]                 
+                    G.node[edge[1]]['conductivity'])/2.0 for edge in G.edges()]                 
     attr = dict(zip(G.edges(),radius_edge))
     nx.set_edge_attributes(G,'conductivity',attr)
     
+    #set length of the edges
+    length_edge = [math.sqrt((G.node[edge[0]]['x'] - G.node[edge[1]]['x'])**2 + \
+                             (G.node[edge[0]]['y'] - G.node[edge[1]]['y'])**2 ) \
+                             for edge in G.edges()]
+    attr = dict(zip(G.edges(), length_edge))
+    nx.set_edge_attributes(G,'weight',attr)
+    
     y = [triangle.get_centroid ().get_y() for triangle in all_triangles]
     y = np.array(y)
-    y = (y + (height-y)*2)%height
+    y = height - y
     y = list(y)
     attr = dict(zip(np.arange(len(y)),y))
     nx.set_node_attributes(G,'y',attr)
@@ -516,9 +523,20 @@ def _drawGraph(G,verbose):
         pos[k] = (G.node[k]['x'], G.node[k]['y'])
     
     widths = np.array([G[e[0]][e[1]]['conductivity'] for e in G.edges()])
-    widths = 15./np.amax(widths)*widths
+    widths = 15./(np.amax(widths)*2)*widths
 
-    nx.draw_networkx_edges(G, pos=pos, width=widths) 
+    nx.draw_networkx_edges(G, pos=pos, width=widths,edgecolor='DarkSlateGray',
+                           alpha=0.3)
+    
+    colors = {3:"orange",2:"purple",1:"red"}
+    for node in G.nodes(data=True):
+        x = node[1]['x']
+        y = node[1]['y']
+        typ = len(nx.neighbors(G,node[0]))
+        c = colors[typ]
+        plt.plot(x,y,'o',color=c,markersize=8,mec=c,alpha=0.8,mew=1)
+        
+    
     if verbose:
         print "\t from _drawGraph: drawing took %1.2f sec"%(time.clock()-start)
     
@@ -546,10 +564,6 @@ def removeRedundantNodes(G,verbose,mode):
     order = G.order()
     new_order = 0    
     i = 0 
-    radii = [edge[2]['conductivity'] for edge in G.edges(data=True)]
-    min_val = np.amin(radii)
-    max_val = np.amax(radii)
-    upper_five = (max_val - min_val)/5.0  
     
     while(True):
         if mode == 1:
@@ -564,29 +578,17 @@ def removeRedundantNodes(G,verbose,mode):
         for node in G.nodes():
             if(G.degree(node)==2):
                 neighbors = G.neighbors(node)
-                w1 = G.edge[node][neighbors[0]]['weight']
-                w2 = G.edge[node][neighbors[1]]['weight']
-                c1 = G.edge[node][neighbors[0]]['conductivity']
-                c2 = G.edge[node][neighbors[1]]['conductivity']
-                c = float(c1 + c2)/2.0
-                if ((c1 >= upper_five or c2 >= upper_five) != (c1 >= upper_five\
-                and c2 >= upper_five)):
-                    if c1 > c2:
-                        c = c2
-                    else:
-                        c = c1
-                    x1 = G.node[neighbors[0]]['x']
-                    y1 = G.node[neighbors[0]]['y']
-                    x2 = G.node[neighbors[1]]['x']
-                    y2 = G.node[neighbors[1]]['y']
-                    w = np.sqrt((x1-x2)**2 + (y1-y2)**2)
-                    G.add_edge(neighbors[0],neighbors[1], weight = w, \
-                    conductivity = c )
-                else:
-                    G.add_edge(neighbors[0],neighbors[1], weight = w1+w2, \
-                    conductivity = (c1*w1+c2*w2)/(w1+w2) )
-                    
-                nodelist.append(node)
+                n1 = neighbors[0]
+                n2 = neighbors[1]
+                w1 = G.edge[node][n1]['weight']
+                w2 = G.edge[node][n2]['weight']
+                length = float(w1) + float(w2)
+                c1 = G.edge[node][n1]['conductivity']
+                c2 = G.edge[node][n2]['conductivity']
+                radius = (c1*w1+c2*w2)/length
+                G.add_edge(n1,n2, weight = length, conductivity = radius )
+                if n1 not in nodelist and n2 not in nodelist:
+                    nodelist.append(node)
         
         #sometimes when the graph does not contain any branches (e.g. one
         #single line) the redundant node removal ends up with a triangle at
@@ -598,7 +600,7 @@ def removeRedundantNodes(G,verbose,mode):
         else:
             for node in nodelist:
                 G.remove_node(node)
-            
+        
         order = new_order
         new_order = G.order() 
         if verbose:
@@ -627,7 +629,7 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose):
     else: mode = "red2" 
         
     
-    plt.savefig(join(dest,image_name + "_graph_" + mode + ".png"),dpi=600)
+    plt.savefig(join(dest,image_name + "_graph_" + mode + ".pdf"))
     figure_save = time.clock()
     nx.write_gpickle(G,join(dest,image_name + "_graph_" + mode + ".gpickle"))
     graph_save = time.clock()
@@ -653,17 +655,23 @@ def drawTriangulation(h,triangles,image_name,dest):
     '''
     plt.clf()
     plt.title("Triangulation: " + image_name)
-    colors = {"junction":"orange","normal":"purple","end":"red"}
+    colors = {"junction":["orange",3],"normal":["purple",1],"end":["red",2]}
     
     #normal triangles
     for t in triangles:
-            plt.plot([t.get_p1().get_x(),t.get_p2().get_x(),t.get_p3().get_x(),\
-                      t.get_p1().get_x()],[m(h,t.get_p1().get_y()),m(h,t.get_p2().get_y()),\
-                      m(h,t.get_p3().get_y()),m(h,t.get_p1().get_y())],\
-            color=colors[t.get_typ()],linestyle='-',linewidth=0.6,\
-            marker='o',markersize=1.4,mew=0,alpha=0.6)
+            x = [t.get_p1().get_x(),t.get_p2().get_x(),t.get_p3().get_x(),\
+                      t.get_p1().get_x()]
+            y = [m(h,t.get_p1().get_y()),m(h,t.get_p2().get_y()),\
+                      m(h,t.get_p3().get_y()),m(h,t.get_p1().get_y())]
             
-    plt.savefig(join(dest,image_name + "_triangulation.png"),dpi=1200)
+            c = colors[t.get_typ()][0]
+            zorder = colors[t.get_typ()][1]
+            plt.plot(x,y,'o',color=c,linewidth=1.5,zorder=zorder,
+                     markersize=3.0,mew=0,alpha=1.0)
+            plt.fill(x,y,facecolor=c,alpha=0.6,\
+                     edgecolor=c,linewidth=0.5)
+            
+    plt.savefig(join(dest,image_name + "_triangulation.pdf"))
     plt.close()
    
 def drawContours(height,contour_list,image_name,dest): 

@@ -157,7 +157,8 @@ class GraphHandler(object):
                         radius = (r1*l1+r2*l2)/(l1+l2)
                         self.graph.add_edge(n1,n2,weight=length,\
                                 conductivity = radius)
-                        nodelist.append(node)
+                        if n1 not in nodelist and n2 not in nodelist:
+                            nodelist.append(node)
                     
                 else:
                     if(self.graph.degree(node)==2):
@@ -172,7 +173,8 @@ class GraphHandler(object):
                         radius = (r1*l1+r2*l2)/(l1+l2)
                         self.graph.add_edge(n1,n2,weight=length,\
                                 conductivity = radius)
-                        nodelist.append(node)
+                        if n1 not in nodelist and n2 not in nodelist:
+                            nodelist.append(node)
                     
             for node in nodelist:
                 self.graph.remove_node(node)
