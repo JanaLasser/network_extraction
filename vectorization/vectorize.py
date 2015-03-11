@@ -78,6 +78,14 @@ Optional: contour_threshold
         size and delicacy of the features we want to resolve. contour_threshold
         defaults to 3 which barely removes any contours and is feasible for
         rather low resolution images.
+        
+Optional: minimum_feature_size
+        If minimum_feature_size in pixelx is specified, features with a size of
+        up to minimum_feature_size will be removed from the binary image
+        previous to processing. This serves to a) reduce the number of contours
+        which will be processed and not needed in the end and b) helps the
+        triangulation algorithm to not get confused when there are islands
+        within holes.
 
 Optional: verbose
         When specified turns on verbose behaviour. The program will then print
@@ -111,6 +119,9 @@ parser.add_argument('-r','--redundancy', type=int, help='Sets the desired '\
                 default=0,choices=[0,1,2])
 parser.add_argument('-t','--contour_threshold', type=int, \
                 help='Lenght up to which contours are discarded', default=3)
+parser.add_argument('-s','--minimum_feature_size', type=int, \
+                help='Minimum size (pixels) up to which features will be ' + \
+                'discarded.', default = 3000)
                 
 args = parser.parse_args()
 verbose = args.verbose                                                         #verbosity switch turns on progress output
@@ -120,6 +131,7 @@ dest = args.dest                                                               #
 order = args.pruning                                                           #Order parameter for pruning: cut off triangles up to order at the ends of the graph
 redundancy = args.redundancy                                                   #parameter for the number of redundant nodes in the final graph
 contour_threshold = args.contour_threshold                                     #Contours shorter than threshold are discarded.
+minimum_feature_size = args.minimum_feature_size                               #features smaller than minimum_feature_size will be discarded.
 
 image_name = ntpath.basename(image_source).split('.')[0]
 if dest == None:
@@ -138,7 +150,8 @@ image = np.where(image < 127,0,1)                                              #
                                                                                #standard binary image noise-removal with opening followed by closing
 image = binary_opening(image,disk(3))                                          #maybe remove this processing step if depicted structures are really tiny
 image = binary_closing(image,disk(3))
-image = remove_small_objects(image.astype(bool),min_size=3000,connectivity=1)
+image = remove_small_objects(image.astype(bool),min_size=minimum_feature_size,\
+                             connectivity=1)
 
 distance_map = vh.cvDistanceMap(image).astype(np.int)                          #Create distance map
 height,width = distance_map.shape
@@ -162,7 +175,7 @@ Contours:
         - Find the longest contour within the set of contours
 """
 raw_contours = vh.getContours(image)							     #Extract raw contours.   
-flattened_contours = vh.flattenContours(raw_contours,height)			     #Flatten nested contour list
+flattened_contours = vh.flattenContours(raw_contours)       			     #Flatten nested contour list
 
 if debug:                                                                      #debug output
     print "\tContours converted, we have %i contours."\

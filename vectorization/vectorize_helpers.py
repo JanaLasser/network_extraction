@@ -177,12 +177,13 @@ def getContours(image):
     '''
     
     image = image.astype(np.uint8)
-    contours,hirachy = cv2.findContours(image,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_TC89_L1)
+    contours,hirachy = cv2.findContours(image,cv2.RETR_CCOMP,\
+                                        cv2.CHAIN_APPROX_TC89_L1)
     contours = np.asarray(contours)   
     
     return contours
     
-def flattenContours(raw_contours,height):
+def flattenContours(raw_contours):
     '''
     Helper function for flattening contours consisting of nested ndarrays
     
@@ -200,32 +201,10 @@ def flattenContours(raw_contours,height):
         new_contour = []
         for point in contour:
             x,y = (float(point[0][0]),float(point[0][1]))
-            #x,y = _randomize(point[0][0],point[0][1],height)         #TODO: messes with triangle connections somehow    
             new_point = [x,y]
             new_contour.append(new_point)
         converted_contours.append(new_contour)    
     return converted_contours
-
-def _randomize(x,y,height):
-    '''
-    Mirrors the y coordinate so it matches the original image again.
-    Adds a small amount of noise ~10^(-2) to the x- and y coordinate.
-    I believe that adding noise reduces the possibility to encounter a
-    segfault in the triangulation.
-    
-    Parameter:
-    ---------
-        x: float, x-coordinate
-        y: float, y-coordinate
-        height: integer, height of the image for mirroring along the y-coordinate
-    
-    Returns:
-    --------
-        (x,y): tuple, new coordinates mirrored along the y-axis and with noise
-    '''
-    y = y + 0.01*np.random.rand()
-    x = x + 0.01*np.random.rand()
-    return (float(x),float(y))
     
 def countDuplicates(thresholded_contours):
     '''
@@ -662,6 +641,8 @@ def drawTriangulation(h,triangles,image_name,dest):
         dest: string, destination at which the plot is saved
     '''
     plt.clf()
+    ax = plt.gca()
+    ax.set_aspect('equal', 'datalim')
     plt.title("Triangulation: " + image_name)
     colors = {"junction":["orange",3],"normal":["purple",1],"end":["red",2]}
     
@@ -679,7 +660,7 @@ def drawTriangulation(h,triangles,image_name,dest):
             plt.fill(x,y,facecolor=c,alpha=0.6,\
                      edgecolor=c,linewidth=0.05)
             
-    plt.savefig(join(dest,image_name + "_triangulation.png"),dpi=1200)
+    plt.savefig(join(dest,image_name + "_triangulation.png"),dpi=2400)
     plt.close()
    
 def drawContours(height,contour_list,image_name,dest): 
@@ -696,6 +677,8 @@ def drawContours(height,contour_list,image_name,dest):
     '''
     plt.clf()
     plt.title("Contours: " + image_name)
+    ax = plt.gca()
+    ax.set_aspect('equal', 'datalim')
     #flag to turn on plotting of coordinates next to every contour point
     coordinates = False
     
@@ -704,9 +687,10 @@ def drawContours(height,contour_list,image_name,dest):
     for c,i in zip(contour_list,xrange(len(contour_list))):
         c.append((c[0][0],c[0][1]))
         c = np.asarray(c)
+        plt.text(c[0,0],height-c[0,1],str(i))
         plt.plot(c[0:,0],height-c[0:,1],color="black",marker="o", \
-                 markersize=0.1,mfc="FireBrick", mew = 0.1, alpha=0.7, \
-                 linewidth = 0.05)
+                 markersize=0.2,mfc="FireBrick", mew = 0.1, alpha=0.7, \
+                 linewidth = 0.1)
                  
         #optional plotting of coordinates       
         if coordinates:
@@ -714,6 +698,6 @@ def drawContours(height,contour_list,image_name,dest):
                 coordinate_string = "(" + str(point[0]) + "," + str(point[1]) + ")"
                 plt.text(point[0],point[1],coordinate_string,fontsize=0.1)
                 
-    plt.savefig(join(dest,image_name + "_contours.png"),dpi=1200)
+    plt.savefig(join(dest,image_name + "_contours.png"),dpi=2400)
     plt.close()
  
