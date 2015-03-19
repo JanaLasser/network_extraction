@@ -29,16 +29,12 @@ import argparse
 # dependencies
 import numpy as np	
 import meshpy.triangle as triangle	
-#import triangle_wrapper as triangle
 import scipy.misc
 from skimage.morphology import binary_opening, binary_closing, disk
 from skimage.morphology import remove_small_objects
 	
-# helper functions
+#custom helper functions
 import vectorize_helpers as vh
-
-
-
 
 """
 Argument handling:
@@ -100,6 +96,17 @@ Optional: debug
         triangulation. May consume a considerable additional amount of time
         because the additional figures take quite long to plot and save.
         Defaults to False.
+        
+Optional: plot
+        When specified turns on visualization (plotting) of the created graphs.
+        The visualization is done using matplotlib and in general gets very
+        slow when dealing with large networks. As a rule of thumb it is 
+        encouraged to only plot networks when they contain fewer than 10^5
+        nodes. The format the plot will be saved in as well as its resolution
+        (if not saved as vector graphic) can be specified at the beginning of
+        the vectorize_helpers.py file by changing figure_format and figure_dpi.
+        If you want to visualize really large networks, saving them as .png
+        with a high dpi (> 2000) might work.
 """				
 
 parser = argparse.ArgumentParser(description='Vectorize: a program that ' +\
@@ -122,6 +129,11 @@ parser.add_argument('-t','--contour_threshold', type=int, \
 parser.add_argument('-s','--minimum_feature_size', type=int, \
                 help='Minimum size (pixels) up to which features will be ' + \
                 'discarded.', default = 3000)
+parser.add_argument('-i','--image_improvement',action="store_true",\
+                    help='Turns off image smoothing via binary opening and '+\
+                    'closing.', default=False)
+parser.add_argument('-pl','--plot',action="store_true",\
+                    help='Turns on plotting',default=False)
                 
 args = parser.parse_args()
 verbose = args.verbose                                                         #verbosity switch turns on progress output
@@ -132,6 +144,8 @@ order = args.pruning                                                           #
 redundancy = args.redundancy                                                   #parameter for the number of redundant nodes in the final graph
 contour_threshold = args.contour_threshold                                     #Contours shorter than threshold are discarded.
 minimum_feature_size = args.minimum_feature_size                               #features smaller than minimum_feature_size will be discarded.
+image_improvement = args.image_improvement                                     #switches smoothing via binary opening and closing on and off
+plot = args.plot                                                               #switches on visualization of the created graphs
 
 image_name = ntpath.basename(image_source).split('.')[0]
 if dest == None:
@@ -147,11 +161,11 @@ if image.ndim > 2:
     image = vh.RGBtoGray(image)                                                #In case it is not yet grayscale, convert to grayscale.  
 image = np.where(image < 127,0,1)                                              #In case it is not yet binary, perform thresholding  
 
-                                                                               #standard binary image noise-removal with opening followed by closing
-image = binary_opening(image,disk(3))                                          #maybe remove this processing step if depicted structures are really tiny
-image = binary_closing(image,disk(3))
-image = remove_small_objects(image.astype(bool),min_size=minimum_feature_size,\
-                             connectivity=1)
+if image_improvement:                                                          #standard binary image noise-removal with opening followed by closing
+    image = binary_opening(image,disk(3))                                      #maybe remove this processing step if depicted structures are really tiny
+    image = binary_closing(image,disk(3))
+    image = remove_small_objects(image.astype(bool),\
+                                 min_size=minimum_feature_size,connectivity=1)
 
 distance_map = vh.cvDistanceMap(image).astype(np.int)                          #Create distance map
 height,width = distance_map.shape
@@ -207,7 +221,6 @@ if verbose:
 Mesh Creation:
         - The mesh is created of points and facets where every facet is the
           plane spanned by one contour.
-
 """ 
 thresholded_contours = np.asarray(thresholded_contours)                        #add a bit of noise to increase stability of triangulation algorithm
 for c in thresholded_contours:
@@ -267,7 +280,6 @@ Triangle classification:
           in the distance map
         - get rid of isolated triangles
 """
-
 triangles = vh.buildTriangles(triangulation)	                                 #Build triangles                                                                 
 junction = 0
 normal = 0
@@ -347,14 +359,14 @@ Redundant node removal
           graph
 """
 if redundancy == 2: 
-    vh.drawAndSafe(G,image_name,dest,2,verbose)                       #draw and safe graph with redundant nodes                         
+    vh.drawAndSafe(G,image_name,dest,2,verbose,plot)                           #draw and safe graph with redundant nodes                         
 
 if redundancy == 1 or redundancy == 2:                                                            #draw and safe graph with half redundant nodes
     G = vh.removeRedundantNodes(G,verbose,1)
-    vh.drawAndSafe(G,image_name,dest,1,verbose)
+    vh.drawAndSafe(G,image_name,dest,1,verbose,plot)
     
 G = vh.removeRedundantNodes(G,verbose,0)                                       #draw and safe graph without redundant nodes
-vh.drawAndSafe(G,image_name,dest,0,verbose)										
+vh.drawAndSafe(G,image_name,dest,0,verbose,plot)										
 
 if verbose:
     step = time.clock()                                                        #progress output

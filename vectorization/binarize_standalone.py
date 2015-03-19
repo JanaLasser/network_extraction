@@ -29,7 +29,7 @@ def RGBtoGray(image):
         image = image.astype(np.float32).sum(axis=2);image/=3.0
         return image
 
-def otsu_threshold(image):
+def otsuThreshold(image):
 
     histData = np.histogram(image, np.arange(256))
     histData = np.asarray(histData[0])
@@ -109,7 +109,7 @@ image_eq = rank.equalize(image, selem=selem)
 image = 0.5*image_eq + 0.5*image
 
 #find a favorable threshold using otsu thresholding and modify it by t_mod
-threshold = otsu_threshold(image)-t_mod
+threshold = otsuThreshold(image)-t_mod
 
 #threshold and save image
 image = np.where(image > threshold,1.0,0.0)
