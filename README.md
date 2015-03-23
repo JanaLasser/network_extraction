@@ -9,9 +9,9 @@ Extraction of network data is done with the neat.py script. NEAT takes the path 
 NOTE: the format of the input image does not have to be .png, every format supported by the python image library (PIL) can be used.
 Further information about the options available to modify the behaviour and output of NEAT can be obtained by calling
 
->> python vectorize2.py --help
+>> python neat.py --help
 
-The script relies on a collection of functions from neat_helpers.py which in turn needs functions from the C_neat_functions. The latter is written in cython and then compiled for speed. I have provided the original .pyx file as well as the .c file. As I have so far only been able to compile under and for a linux system and therefore only upladed the .so file. If you want to use the script under Windows/OSX you have to either compile the library yourself or wait until I figure out how to cross compile and upload them :-) In the meantime there is a de-cythonized version of the library available called C_neat_functions.py which is slower an very ugly for python code but contains all the functionality of the cythoniyed version.
+The script relies on a collection of functions from neat_helpers.py which in turn needs functions from the C_neat_functions. The latter is written in cython and then compiled for speed. I have provided the original .pyx file as well as the .c file. As I have so far only been able to compile under and for a linux system and therefore only upladed the .so file. If you want to use the script under Windows/OSX you have to either compile the library yourself or wait until I figure out how to cross compile and upload them :-) In the meantime there is a de-cythonized version of the library available called C_neat_functions.py which is slower an very ugly for python code but contains all the functionality of the cythonized version.
 
 
 
@@ -30,7 +30,7 @@ As with NEAT, other formats as .png as supported as well.
 
 I have been dealing with networks extracted from pseudo 2D structures a lot. These images are projections onto a plane and therefore might contain network "crossings" which arent real but just created by superposition of two branches.
 To correct these "false junctions" I have writtenthe GeGUI (graph edit GUI) which allows you to load the extracted graph object, superimpose it onto the original image and modify the graph's structure by manually deleting and creating nodes and edges.
-The script to start the GUI is called GeGUI.py (geGUI) but all the functionality is placed in the three sub-scripts InterActor (dealing with user-interaction), GraphHandler (dealing with manipulations of the graph object) abd PlotHandler (dealing with the dynamic display of changes to the graph on the screen). To run the GeGUI you need to specify a folder in which the graph you want to process is located. The folder also needs to hold an euclidean distance map of the binary the graph was created from and the original image for the GeGUI to properly start. Therefore the folder should look like this:
+The script to start the GUI is called GeGUI.py but all the functionality is placed in the three sub-scripts InterActor (dealing with user-interaction), GraphHandler (dealing with manipulations of the graph object) abd PlotHandler (dealing with the dynamic display of changes to the graph on the screen). To run the GeGUI you need to specify a folder in which the graph you want to process is located. The folder also needs to hold an euclidean distance map of the binary the graph was created from and the original image for the GeGUI to properly start. Therefore the folder should look like this:
 
 dirofimage
 	original_image.tif
