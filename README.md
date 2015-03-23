@@ -1,4 +1,5 @@
-The scripts and libraries uploaded in this project are intended to be a suite of tools for the extraction and manipulation of network data (graphs) from images.
+The scripts and libraries uploaded in this project are intended to be a suite of tools for the extraction and manipulation of network data (graphs) from images. The scripts uploaded here are part of a methods paper detailing the algorithms used which is soon to be published.
+The binaries of the images used as examples in the paper can be found under /neat/data. These binaries represent a range of different use-cases for NEAt both from different research projects as well as with regards to the size of the networks they contain. They are ready to be processed with NEAT without any further modifications.
 
 *** Data Extraction using NEAT***
 The network extraction and analysis tool (neat) is intended for the extraction of network data from images which can later be analyzed easily.

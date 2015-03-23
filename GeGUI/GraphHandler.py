@@ -216,7 +216,8 @@ class GraphHandler(object):
         self.graph = T
         self.streamline_graph()
         name = 'digraph'
-        nx.write_gpickle(self.graph,join(self.name_dict['dest_path'],name + ".gpickle"))
+        nx.write_gpickle(self.graph,join(self.name_dict['dest_path'],\
+            name + ".gpickle"))
         self.PH.plot_and_save(self.graph,name)
       
     def draw_tree(self,T):
