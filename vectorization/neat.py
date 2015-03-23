@@ -164,7 +164,8 @@ image = np.where(image < 127,0,1)                                              #
 if image_improvement:                                                          #standard binary image noise-removal with opening followed by closing
     image = binary_opening(image,disk(3))                                      #maybe remove this processing step if depicted structures are really tiny
     image = binary_closing(image,disk(3))
-    image = remove_small_objects(image.astype(bool),\
+    
+image = remove_small_objects(image.astype(bool),\
                                  min_size=minimum_feature_size,connectivity=1)
 
 distance_map = vh.cvDistanceMap(image).astype(np.int)                          #Create distance map

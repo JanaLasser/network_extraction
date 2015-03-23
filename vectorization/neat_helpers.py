@@ -29,6 +29,7 @@ from C_vectorize_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 #global switches
 figure_format = ".pdf"                                                         #plot format
 figure_dpi = 600                                                               #plot resolution
+markersize = 3
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
 #functions used in the vectorize.py script
@@ -596,7 +597,7 @@ def _drawGraph(G,verbose):
             pass
         else:
             c = colors[typ]
-            plt.plot(x,y,'o',color=c,markersize=3,mec=c,alpha=0.8,mew=1)
+            plt.plot(x,y,'o',color=c,markersize=markersize,mec=c,alpha=0.8,mew=1)
         
     
     if verbose:
