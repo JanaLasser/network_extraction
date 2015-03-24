@@ -116,7 +116,7 @@ parser.add_argument('source',type=str,help='Complete path to the image')
 parser.add_argument('-dest', type=str, help='Complete path to the folder '\
                 + 'results will be saved to if different than source folder')
 parser.add_argument('-v','--verbose',action="store_true",\
-                help='Turns on program verbosity', default=True)
+                help='Turns on program verbosity', default=False)
 parser.add_argument('-d','--debug',action="store_true",\
                 help='Turns on debugging output',default=False)
 parser.add_argument('-p','--pruning', type=int, help='Number of triangles that '\
@@ -124,13 +124,13 @@ parser.add_argument('-p','--pruning', type=int, help='Number of triangles that '
 parser.add_argument('-r','--redundancy', type=int, help='Sets the desired '\
                 + 'number of redundant nodes in the output graph',\
                 default=0,choices=[0,1,2])
-parser.add_argument('-t','--contour_threshold', type=int, \
-                help='Lenght up to which contours are discarded', default=3)
+#parser.add_argument('-t','--contour_threshold', type=int, \
+#                help='Lenght up to which contours are discarded', default=3)
 parser.add_argument('-s','--minimum_feature_size', type=int, \
                 help='Minimum size (pixels) up to which features will be ' + \
                 'discarded.', default = 3000)
 parser.add_argument('-i','--image_improvement',action="store_true",\
-                    help='Turns off image smoothing via binary opening and '+\
+                    help='Turns on image smoothing via binary opening and '+\
                     'closing.', default=False)
 parser.add_argument('-pl','--plot',action="store_true",\
                     help='Turns on plotting',default=False)
@@ -142,17 +142,19 @@ image_source = args.source                                                     #
 dest = args.dest                                                               #full path to the folder the results will be stored in
 order = args.pruning                                                           #Order parameter for pruning: cut off triangles up to order at the ends of the graph
 redundancy = args.redundancy                                                   #parameter for the number of redundant nodes in the final graph
-contour_threshold = args.contour_threshold                                     #Contours shorter than threshold are discarded.
+contour_threshold = 5#args.contour_threshold                                     #Contours shorter than threshold are discarded.
 minimum_feature_size = args.minimum_feature_size                               #features smaller than minimum_feature_size will be discarded.
 image_improvement = args.image_improvement                                     #switches smoothing via binary opening and closing on and off
 plot = args.plot                                                               #switches on visualization of the created graphs
+
+pa = "Neat> "                                                                  #preamble
 
 image_name = ntpath.basename(image_source).split('.')[0]
 if dest == None:
     dest = image_source.split(image_name)[0]
 if verbose:
-    print "\n*** Starting to vectorize image %s ***"%image_name
-    print "\nCurrent step: Image preparations"
+    print "\n" + pa + "*** Starting to vectorize image %s ***"%image_name
+    print "\n" + pa + "Current step: Image preparations"
 start = time.clock()                                                           #start timer
 previous_step = time.clock()                                                               
                                                      
@@ -177,8 +179,8 @@ if debug:
     scipy.misc.imsave(join(dest,image_name + "_processed.png"),image)          #debug output   
 if verbose:													
     step = time.clock()                                                        #progress output
-    print "Done in %1.2f sec."%(step-previous_step)
-    print "\nCurrent step: Contour extraction and thresholding."
+    print pa + "Done in %1.2f sec."%(step-previous_step)
+    print "\n" + pa + "Current step: Contour extraction and thresholding."
     previous_step = step
  
 """ 
@@ -193,14 +195,14 @@ raw_contours = nh.getContours(image)							     #Extract raw contours.
 flattened_contours = nh.flattenContours(raw_contours)       			     #Flatten nested contour list
 
 if debug:                                                                      #debug output
-    print "\tContours converted, we have %i contours."\
+    print pa + "\tContours converted, we have %i contours."\
            %(len(flattened_contours))
 													
 thresholded_contours = nh.thresholdContours(flattened_contours,\
     contour_threshold)                                                         #contours shorter than "threshold" are discarded.
 
 if debug:                                                                      #debug output
-    print "\tContours thresholded, %i contours left."\
+    print pa + "\tContours thresholded, %i contours left."\
            %(len(thresholded_contours)) 
     nh.drawContours(height,thresholded_contours,image_name,dest)
 
@@ -213,9 +215,9 @@ for c in xrange(len(thresholded_contours)):						     #Find index of longest con
 
 if verbose:       
     step = time.clock()                                                        #progress output
-    print "Done in %1.2f sec."\
+    print pa + "Done in %1.2f sec."\
           %(step-previous_step)
-    print "\nCurrent step: Mesh setup."
+    print "\n" + pa + "Current step: Mesh setup."
     previous_step = step
      
 """
@@ -246,8 +248,8 @@ for i in xrange(len(thresholded_contours)):						     #Traverse all contours.
 
 if verbose:
     step = time.clock()                                                        #progress output
-    print "Done in %1.2f sec."%(step-previous_step)
-    print "\nCurrent step: Triangulation."       
+    print pa + "Done in %1.2f sec."%(step-previous_step)
+    print"\n" + pa + "Current step: Triangulation."       
     previous_step = step
 
 """
@@ -268,8 +270,8 @@ triangulation = triangle.build(info,verbose=False,allow_boundary_steiner=False,#
 
 if verbose:
     step = time.clock()                                                        #progress output
-    print "Done in %1.2f sec."%(step-previous_step)
-    print "\nCurrent step: Setup of triangles and neighborhood relations."
+    print pa + "Done in %1.2f sec."%(step-previous_step)
+    print "\n" + pa + "Current step: Setup of triangles and neighborhood relations."
     previous_step = step
 
 """
@@ -302,14 +304,14 @@ triangles = list(np.delete(np.asarray(triangles), isolated_indices))           #
 
 if debug:                                                                      #debug output
     nh.drawTriangulation(height,triangles,image_name,dest)
-    print "\tTriangle types:"
-    print "\tjunction: %d, normal: %d, end: %d, isolated: %d"\
+    print pa + "\tTriangle types:"
+    print pa + "\tjunction: %d, normal: %d, end: %d, isolated: %d"\
                 %(junction,normal,end,len(isolated_indices))
-    print "\ttriangle radii defaulted to 1.0: ",default_triangles
+    print pa + "\ttriangle radii defaulted to 1.0: ",default_triangles
 if verbose:	           
     step = time.clock()                                                        #progress output
-    print "Done in %1.2f sec." %(step-previous_step)
-    print "\nCurrent step: Creation of triangle adjacency matrix." 
+    print pa + "Done in %1.2f sec." %(step-previous_step)
+    print "\n" + pa + "Current step: Creation of triangle adjacency matrix." 
     previous_step = step
 
 """
@@ -323,8 +325,8 @@ adjacency_matrix = nh.createTriangleAdjacencyMatrix(triangles)       	     #Crea
 
 if verbose:                        									    					     
     step = time.clock()                                                        #progress output
-    print "Done in %1.2f sec."%(step-previous_step)
-    print "\nCurrent step: Bruteforce Pruning."
+    print pa + "Done in %1.2f sec."%(step-previous_step)
+    print "\n" + pa + "Current step: Bruteforce Pruning."
     previous_step = step																					
 
 """
@@ -339,16 +341,16 @@ adjacency_matrix,triangles = nh.bruteforcePruning(adjacency_matrix,\
                              triangles,order,verbose)                          #prune away the "order" number of triangles at the ends of the network
 if verbose:
     step = time.clock()                                                        #progress output
-    print "Done in %1.2f sec."%(step-previous_step)
-    print "\nCurrent step: Graph creation."
+    print pa + "Done in %1.2f sec."%(step-previous_step)
+    print "\n" + pa + "Current step: Graph creation."
     previous_step = step
 
 G = nh.createGraph(adjacency_matrix,triangles,height)                          #creation of graph object 
 
 if verbose:
     step = time.clock()                                                        #progress output
-    print "Done in %1.2f sec."%(step-previous_step)
-    print "\nCurrent step: Removal of redundant nodes,"\
+    print pa + "Done in %1.2f sec."%(step-previous_step)
+    print  "\n" + pa + "Current step: Removal of redundant nodes,"\
           + " drawing and saving of the graph."
     previous_step = step
 
@@ -371,8 +373,8 @@ nh.drawAndSafe(G,image_name,dest,0,verbose,plot)
 
 if verbose:
     step = time.clock()                                                        #progress output
-    print "Done in %1.2f sec."%(step-previous_step)
+    print pa + "Done in %1.2f sec."%(step-previous_step)
     previous_step = step	
     end = time.clock()                                                             
-    print "\nALL DONE! Total time: %1.2f sec"%(end-start)
+    print "\n" + pa + "ALL DONE! Total time: %1.2f sec"%(end-start)
 
