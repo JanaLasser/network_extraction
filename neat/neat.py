@@ -34,7 +34,7 @@ from skimage.morphology import binary_opening, binary_closing, disk
 from skimage.morphology import remove_small_objects
 	
 #custom helper functions
-import vectorize_helpers as vh
+import neat_helpers as nh
 
 """
 Argument handling:
@@ -156,9 +156,9 @@ if verbose:
 start = time.clock()                                                           #start timer
 previous_step = time.clock()                                                               
                                                      
-image = vh.getImage(image_source).astype(np.uint8)                             #Load the image.
+image = nh.getImage(image_source).astype(np.uint8)                             #Load the image.
 if image.ndim > 2:
-    image = vh.RGBtoGray(image)                                                #In case it is not yet grayscale, convert to grayscale.  
+    image = nh.RGBtoGray(image)                                                #In case it is not yet grayscale, convert to grayscale.  
 image = np.where(image < 127,0,1)                                              #In case it is not yet binary, perform thresholding  
 
 if image_improvement:                                                          #standard binary image noise-removal with opening followed by closing
@@ -168,7 +168,7 @@ if image_improvement:                                                          #
 image = remove_small_objects(image.astype(bool),\
                                  min_size=minimum_feature_size,connectivity=1)
 
-distance_map = vh.cvDistanceMap(image).astype(np.int)                          #Create distance map
+distance_map = nh.cvDistanceMap(image).astype(np.int)                          #Create distance map
 height,width = distance_map.shape
 scipy.misc.toimage(distance_map, cmin=0, cmax=255)\
           .save(join(dest,image_name + "_dm.png"))                             #save the distance map in case we need it later
@@ -189,20 +189,20 @@ Contours:
           of Dominant Pointson Digital Curve. PAMI 11 8, pp 859-872 (1989))
         - Find the longest contour within the set of contours
 """
-raw_contours = vh.getContours(image)							     #Extract raw contours.   
-flattened_contours = vh.flattenContours(raw_contours)       			     #Flatten nested contour list
+raw_contours = nh.getContours(image)							     #Extract raw contours.   
+flattened_contours = nh.flattenContours(raw_contours)       			     #Flatten nested contour list
 
 if debug:                                                                      #debug output
     print "\tContours converted, we have %i contours."\
            %(len(flattened_contours))
 													
-thresholded_contours = vh.thresholdContours(flattened_contours,\
+thresholded_contours = nh.thresholdContours(flattened_contours,\
     contour_threshold)                                                         #contours shorter than "threshold" are discarded.
 
 if debug:                                                                      #debug output
     print "\tContours thresholded, %i contours left."\
            %(len(thresholded_contours)) 
-    vh.drawContours(height,thresholded_contours,image_name,dest)
+    nh.drawContours(height,thresholded_contours,image_name,dest)
 
 longest_index = 0											     #Position of longest contour.
 longest_length = 0										     #Length of longest contour.
@@ -230,7 +230,7 @@ for c in thresholded_contours:
         p[1] = p[1] + 0.1*np.random.rand()
    			     
 mesh_points = thresholded_contours[longest_index]                              #First add longest contour to mesh.
-mesh_facets = vh.roundTripConnect(0,len(mesh_points)-1)				     #Create facets from the longest contour.
+mesh_facets = nh.roundTripConnect(0,len(mesh_points)-1)				     #Create facets from the longest contour.
 
 hole_points = []  										     #Every contour other than the longest needs an interiour point.
 for i in xrange(len(thresholded_contours)):						     #Traverse all contours. 
@@ -239,10 +239,10 @@ for i in xrange(len(thresholded_contours)):						     #Traverse all contours.
         pass
     else:					                                             #Find a point that lies within the contour.
         contour = thresholded_contours[i]
-        interior_point = vh.getInteriorPoint(contour)        										
+        interior_point = nh.getInteriorPoint(contour)        										
         hole_points.append((interior_point[0],interior_point[1]))		     #Add point to list of interior points.
         mesh_points.extend(contour)							     #Add contours identified by their interior points to the mesh.
-        mesh_facets.extend(vh.roundTripConnect(curr_length,len(mesh_points)-1))#Add facets to the mesh
+        mesh_facets.extend(nh.roundTripConnect(curr_length,len(mesh_points)-1))#Add facets to the mesh
 
 if verbose:
     step = time.clock()                                                        #progress output
@@ -281,7 +281,7 @@ Triangle classification:
           in the distance map
         - get rid of isolated triangles
 """
-triangles = vh.buildTriangles(triangulation)	                                 #Build triangles                                                                 
+triangles = nh.buildTriangles(triangulation)	                                 #Build triangles                                                                 
 junction = 0
 normal = 0
 end = 0
@@ -301,7 +301,7 @@ for i in range(len(triangles)):
 triangles = list(np.delete(np.asarray(triangles), isolated_indices))           #remove isolated triangles from the list of triangles
 
 if debug:                                                                      #debug output
-    vh.drawTriangulation(height,triangles,image_name,dest)
+    nh.drawTriangulation(height,triangles,image_name,dest)
     print "\tTriangle types:"
     print "\tjunction: %d, normal: %d, end: %d, isolated: %d"\
                 %(junction,normal,end,len(isolated_indices))
@@ -319,7 +319,7 @@ Triangle adjacency matrix:
         - create a copy of the adjacency matrix for the pruning process
 
 """
-adjacency_matrix = vh.createTriangleAdjacencyMatrix(triangles)       	     #Create an adjacency matrix of all triangles with euclidean distances between triangles as link weights 
+adjacency_matrix = nh.createTriangleAdjacencyMatrix(triangles)       	     #Create an adjacency matrix of all triangles with euclidean distances between triangles as link weights 
 
 if verbose:                        									    					     
     step = time.clock()                                                        #progress output
@@ -335,7 +335,7 @@ Graph creation and improvement
           and radius stored in the adjacency matrix and
           the list of triangles.
 """
-adjacency_matrix,triangles = vh.bruteforcePruning(adjacency_matrix,\
+adjacency_matrix,triangles = nh.bruteforcePruning(adjacency_matrix,\
                              triangles,order,verbose)                          #prune away the "order" number of triangles at the ends of the network
 if verbose:
     step = time.clock()                                                        #progress output
@@ -343,7 +343,7 @@ if verbose:
     print "\nCurrent step: Graph creation."
     previous_step = step
 
-G = vh.createGraph(adjacency_matrix,triangles,height)                          #creation of graph object 
+G = nh.createGraph(adjacency_matrix,triangles,height)                          #creation of graph object 
 
 if verbose:
     step = time.clock()                                                        #progress output
@@ -360,14 +360,14 @@ Redundant node removal
           graph
 """
 if redundancy == 2: 
-    vh.drawAndSafe(G,image_name,dest,2,verbose,plot)                           #draw and safe graph with redundant nodes                         
+    nh.drawAndSafe(G,image_name,dest,2,verbose,plot)                           #draw and safe graph with redundant nodes                         
 
 if redundancy == 1 or redundancy == 2:                                                            #draw and safe graph with half redundant nodes
-    G = vh.removeRedundantNodes(G,verbose,1)
-    vh.drawAndSafe(G,image_name,dest,1,verbose,plot)
+    G = nh.removeRedundantNodes(G,verbose,1)
+    nh.drawAndSafe(G,image_name,dest,1,verbose,plot)
     
-G = vh.removeRedundantNodes(G,verbose,0)                                       #draw and safe graph without redundant nodes
-vh.drawAndSafe(G,image_name,dest,0,verbose,plot)										
+G = nh.removeRedundantNodes(G,verbose,0)                                       #draw and safe graph without redundant nodes
+nh.drawAndSafe(G,image_name,dest,0,verbose,plot)										
 
 if verbose:
     step = time.clock()                                                        #progress output

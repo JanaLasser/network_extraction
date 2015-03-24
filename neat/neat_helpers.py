@@ -23,12 +23,12 @@ import cv2
 import cv
 
 #custom classes and functions from the cythonized helper library
-from C_vectorize_functions import CbuildTriangles, CbruteforcePruning
-from C_vectorize_functions import CcreateTriangleAdjacencyMatrix, Cpoint
+from C_neat_functions import CbuildTriangles, CbruteforcePruning
+from C_neat_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
-figure_format = ".pdf"                                                         #plot format
-figure_dpi = 600                                                               #plot resolution
+figure_format = ".png"                                                         #plot format
+figure_dpi = 2400                                                               #plot resolution
 markersize = 3
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
