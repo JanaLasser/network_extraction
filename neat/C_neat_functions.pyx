@@ -23,49 +23,14 @@ ctypedef np.int_t DTYPE_t
 
 
 #helper function to calculate the distance between two points on a plane
-
-
 cdef distance(Cpoint p1,Cpoint p2):
     cdef double dist = sqrt((p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y))
+    #be aware that this is a dirty hack necessary because the centerpoints are 
+    #originating from a discrete space!
+    if dist == 0:
+        dist = 0.1
     return dist
 
-#extension of the scipy.sparse lil_matrix which implements a function for
-#column and row removal 
-class lil2(lil_matrix):
-    def removecol(self,int j):
-        if j < 0:
-            j += self.shape[1]
-
-        if j < 0 or j >= self.shape[1]:
-            raise IndexError('column index out of bounds')
-
-        rows = self.rows
-        data = self.data
-        cdef int i
-        for i in xrange(self.shape[0]):
-            pos = bisect_left(rows[i], j)
-            if pos == len(rows[i]):
-                continue
-            elif rows[i][pos] == j:
-                rows[i].pop(pos)
-                data[i].pop(pos)
-                if pos == len(rows[i]):
-                    continue
-            for pos2 in xrange(pos,len(rows[i])):
-                rows[i][pos2] -= 1
-
-        self._shape = (self._shape[0],self._shape[1]-1)
-
-    def removerow(self,int i):
-        if i < 0:
-            i += self.shape[0]
-
-        if i < 0 or i >= self.shape[0]:
-            raise IndexError('row index out of bounds')
-
-        self.rows = np.delete(self.rows,i,0)
-        self.data = np.delete(self.data,i,0)
-        self._shape = (self._shape[0]-1,self.shape[1]) 
 
 '''
 Custom class for a point in 2D. Has x- and y coordinates as members.
@@ -147,7 +112,7 @@ cdef class Csegment:
         self.midpoint = Cpoint((self.p1.x + self.p2.x)/2, (self.p1.y + self.p2.y)/2)
    
     def __str__(self):
-        return "(%1.2f,%1.2f) -> (%1.2f,%1.2f)"%\
+        return "(%d,%d) -> (%d,%d)"%\
                 (self.p1.x,self.p1.y,self.p2.x,self.p2.y)
 
     def __richcmp__(Csegment self, Csegment other not None, int op):
@@ -195,40 +160,49 @@ Members:
     - edge_i:   Edges the triangle is constructed with
     - p_i:      Cpoints that span the triangle
     - typ:      type of the triangle (junction, normal, end or isolated)
-    - centroid: "midpoint" of the triangle, point with the largest distance
-                to the nearest edge of the foreground structure. It is only
-                called "centroid" because of historical reasons :-)
+    - center: "midpoint" of the triangle, point with the largest distance
+                to the nearest edge of the foreground structure. 
     - radius: distance to the nearest edge of the foreground structure
     - index:    counter used to fix the triangles position in a triangle
                 adjacency matrix
-    - neighbor: pointers to the triangles neighbors (3 to 0 possible neighbors)
-                for junction, normal, end and isolated triangles. The pointers
-                point to None at triangle construction and are set later by
-                the triangle's "set_type" method.
-    - Cpoints h, opp_point and half_ext_edge:
-                helper points for the calculation of centroid and radius
-            
+    - neighbor_ist: pointers to the triangles neighbors (3 to 0 possible
+                neighbors) for junction, normal, end and isolated triangles.
+                The pointers point to None at triangle construction and are set
+                later by the triangle's "set_type" method.
+    - Cpoints angle_bisection_start and angle_bisection_end
+                helper points for the calculation of center and radius
+                
 Exposed functions:
+    - get_center(): returns the center of the triangle
+    - set_center(): set the center of a triangle using the distance_map
+    - get_radius(): returns the radius of the structure at the center
+    - get_pi(): returns the ith point of the triangle
+    - get_edgei(): returns the ith edge of the triangle
+    - get_index(): returns the index of the triangle (used for creation of the
+                adjacency matrix)
+    - set_index(): sets the index of the triangle
+    - get_type(): returns the type of the triangle
+    - set_type(): sets the type of the triangle to either "junction", "normal",
+                "end" or "isolated"
+
+            
     
 '''       
 cdef class CshapeTriangle:
     cdef Csegment edge1, edge2, edge3
-    cdef Cpoint p1, p2, p3    
-    cdef typ 
-    cdef Cpoint centroid
+    cdef Cpoint p1, p2, p3, center, angle_bisection_start, angle_bisection_end
+    cdef str typ 
     cdef double radius
     cdef int index
-    #might be more convenient to store them in a list but so far they are
-    #three separate members
-    cdef CshapeTriangle neighbor1, neighbor2, neighbor3
-    cdef Cpoint h, opp_point, half_ext_edge
+    cdef list neighbor_list 
    
     #Constructor creates a triangle from three segments, sets the three points
     #of the triangle and the segment's pointer to the newly created triangle
     def __init__(self, Csegment edge1, Csegment edge2, Csegment edge3):
         #type cannot be determined at creation and has to be set at a later
-        #point via the set_type function
-        self.typ = None                     
+        #point via the set_type function as is the neighbor_list
+        self.typ = None   
+        self.neighbor_list = [None, None, None]                  
         self.edge1 = edge1
         self.edge2 = edge2
         self.edge3 = edge3     
@@ -249,273 +223,249 @@ cdef class CshapeTriangle:
         if edge3.triangle1 == None: edge3.triangle1 = self
         else: edge3.triangle2 = self
     
-    #getter and setter for the member variables
+    #getter and setter for the center, the setter calls sub-functions for
+    #each triangle type. The setter also sets the radius of the triangle.
+    #the function returns 0 if the radius has been set correctly or if an 
+    #isolated triangle or triangle of unknown type is encountered. If the 
+    #radius defaulted to zero it will return 1 (for debugging reasons)
+    cpdef get_center(self): return self.center
+    cpdef set_center(self,np.ndarray[DTYPE_t,ndim=2] distance_map):
+        if self.typ == None:
+            print "tried to set center of None-type triangle, nothing happened"
+            return 0
+        elif self.typ == "junction":
+            return self.set_center_junction(distance_map)
+        elif self.typ == "normal":
+            return self.set_center_normal(distance_map)
+        elif self.typ == "end":
+            return self.set_center_end(distance_map)
+        elif self.typ == "isolated":
+            return 0
+        else:
+            print "unknown triangle type!"
+        return 0
+        
     cpdef get_radius(self): return self.radius
-    cpdef get_centroid(self): return self.centroid      
+
+    #getter and setter for the triangle's points, edges and index        
     cpdef get_p1(self): return self.p1       
     cpdef get_p2(self): return self.p2       
     cpdef get_p3(self): return self.p3   
+    cpdef get_edge1(self): return self.edge1      
+    cpdef get_edge2(self): return self.edge2       
+    cpdef get_edge3(self): return self.edge3 
     cpdef get_index(self): return self.index
-    cpdef set_index(self,index): self.index = index
-    cpdef get_typ(self): return self.typ 
-    cpdef get_neighbor1(self): return self.neighbor1
-    cpdef get_neighbor2(self): return self.neighbor2
-    cpdef get_neighbor3(self): return self.neighbor3
+    cpdef set_index(self,int index): self.index = index
     
-    #set_typ is a function typically called after all triangles have been
-    #initially created and all segment-pointers to triangles have been set.
-    #It checks how many neighbors a triangle has and therefore sets its typ
-    #to junction (3 neighbors), normal (2 neighbors), end (1 neighbor) or 
-    #isolated (0 neighbors) for fast type-checks later on.
-    #It also sets pointers to the triangle's neighbors so we are able to locate
-    #them without searching through long lists.
-    #The function also sets helper points for the calculation of the
-    #triangle's radius and centroid. At the and, a helper function for the
-    #actual calculation of radius and centroid based on the euclidean 
-    #distance map of the image is called.
-    #This is done only after determination of the triange's type because 
-    #methods for setting the radius and centroid differ depending on type.
-    cpdef set_typ(self,np.ndarray distance_map):
-        #helper variables
-        cdef int neighbors = 0
-        cdef Cpoint h1,h2,h3
-        cdef double abs_ab1,abs_ab2,abs_ab3
-        
+    #getter and setter for the triangle's type. The type is determined based
+    #on how many neighbors the triangle has
+    cpdef get_type(self): return self.typ 
+    cpdef set_type(self):
+        cdef int neighbors = 0 
         #set the triangels neighbors based on the pointers stored in the edges
-        if self.edge1.triangle1 == self: self.neighbor1 = self.edge1.triangle2           
-        else: self.neighbor1 = self.edge1.triangle1
-        if self.edge2.triangle1 == self: self.neighbor2 = self.edge2.triangle2           
-        else: self.neighbor2 = self.edge2.triangle1
-        if self.edge3.triangle1 == self: self.neighbor3 = self.edge3.triangle2           
-        else: self.neighbor3 = self.edge3.triangle1
+        if self.edge1.triangle1 == self:
+            self.neighbor_list[0] = self.edge1.triangle2           
+        else: self.neighbor_list[0] = self.edge1.triangle1
+        if self.edge2.triangle1 == self:
+            self.neighbor_list[1] = self.edge2.triangle2           
+        else: self.neighbor_list[1] = self.edge2.triangle1
+        if self.edge3.triangle1 == self:
+            self.neighbor_list[2] = self.edge3.triangle2           
+        else: self.neighbor_list[2] = self.edge3.triangle1
   
         #count the number of non-None neighbors      
-        if self.neighbor1 != None:
+        if self.neighbor_list[0] != None:
             neighbors += 1
-        if self.neighbor2 != None:
+        if self.neighbor_list[1] != None:
             neighbors += 1
-        if self.neighbor3 != None:
+        if self.neighbor_list[2] != None:
             neighbors += 1
             
         #junction triangle if we have 3 neighbors
         if neighbors == 3:
             self.typ = "junction"  
-            
-            #create helper points for calculation of triangle center and radius
-            #midpoints of the edges:
-            h1 = Cpoint((self.p1.x+self.p2.x)/2.0, (self.p1.y+self.p2.y)/2.0)
-            h2 = Cpoint((self.p1.x+self.p3.x)/2.0, (self.p1.y+self.p3.y)/2.0)
-            h3 = Cpoint((self.p2.x+self.p3.x)/2.0, (self.p2.y+self.p3.y)/2.0) 
-            #distances between edge-midpoints and opposing points
-            abs_ab1 = distance(h1,self.p3)        
-            abs_ab2 = distance(h2,self.p2)
-            abs_ab3 = distance(h3,self.p1)     
-            
-            #set the helper variables for the longest angle bisection line and
-            #its opposing point
-            if (abs_ab1 >= abs_ab2 and abs_ab1 >= abs_ab3):
-                self.h = h1
-                self.opp_point = self.p3
-            elif(abs_ab2 >= abs_ab1 and abs_ab2 >= abs_ab3):
-                self.h = h2
-                self.opp_point = self.p2
-            else:
-                self.h = h3
-                self.opp_point = self.p1    
                                    
         #normal triangle if we have two neighbors
         elif neighbors == 2:
-            self.typ = "normal"
-            
-            #find out which of the edges is the external edge (edge shared
-            #with the contour) and set its opposing point accordingly
-            if self.neighbor1 == None: #-> edge1 is the external edge
-                self.half_ext_edge = self.edge1.get_midpoint()
-                self.opp_point = self.edge2.get_cp(self.edge3)
-                self.neighbor1 = self.neighbor3
-                self.neighbor3 = None                            
-            elif self.neighbor2 == None:# -> edge2 is the external edge
-                self.half_ext_edge = self.edge2.get_midpoint()
-                self.opp_point = self.edge1.get_cp(self.edge3)
-                self.neighbor2 = self.neighbor3
-                self.neighbor3 = None
-            else: # -> edge3 is the external edge
-                self.half_ext_edge = self.edge3.get_midpoint()
-                self.opp_point = self.edge1.get_cp(self.edge2)          
-            
+            self.typ = "normal"        
+          
         #end triangle if we have one neighbor
         elif neighbors == 1:
             self.typ = "end"
-            if self.neighbor3 != None:
-                self.neighbor1 = self.neighbor3
-                self.neighbor3 = None
-            elif self.neighbor2 != None:
-                self.neighbor1 = self.neighbor2
-                self.neighbor2 = None
-            else:
-                pass
                     
         #isolated triangle if we have zero neighbors
-        else:
+        elif neighbors == 0:
             self.typ = "isolated"
             
-        #calculate position of triangle centroid and radius
-        return self.set_radius_and_center(distance_map)
+        #something really weird happened...
+        else:
+            print "number of neighbors not in (0,1,2,3)... really weird!"
+        
+    #getter and setter for the triangle's neighbors        
+    cpdef get_neighbor(self,int index): return self.neighbor_list[index]
+    cpdef set_neighbor(self,int index,CshapeTriangle n):
+        self.neighbor_list[index] = n 
+    
+    #helper function which recieves two triangles as input and returns the
+    #shared edge if they are neighbors or "None" if they are not.
+    cdef get_connecting_edge(self,CshapeTriangle n):
+        if self.edge1 in [n.get_edge1(),n.get_edge2(),n.get_edge3()]:
+            return self.edge1
+        elif self.edge2 in [n.get_edge1(),n.get_edge2(),n.get_edge3()]:
+            return self.edge2
+        elif self.edge3 in [n.get_edge1(),n.get_edge2(),n.get_edge3()]:
+            return self.edge3
+        else:
+            print "triangles ckecked for connection which are not neighbors!"
+            return None
+    
+    #Helper function to set the start and end of the correct angle bisection
+    #line if the triangle is a junction.
+    #We set the angle bisection line to be the longest of the three angle
+    #bisection lines in the triangle
+    cdef set_center_junction(self,np.ndarray[DTYPE_t,ndim=2] distance_map):
+        cdef Cpoint mid_p1p2, mid_p1p3, mid_p2p3
+        cdef double abs_bisect1,abs_bisect2,abs_bisect3
+        #midpoints of the edges:
+        mid_p1p2 = Cpoint((self.p1.x+self.p2.x)/2.0, (self.p1.y+self.p2.y)/2.0)
+        mid_p1p3 = Cpoint((self.p1.x+self.p3.x)/2.0, (self.p1.y+self.p3.y)/2.0)
+        mid_p2p3 = Cpoint((self.p2.x+self.p3.x)/2.0, (self.p2.y+self.p3.y)/2.0) 
+        #distances between edge-midpoints and opposing points
+        abs_bisect1 = distance(mid_p1p2,self.p3)        
+        abs_bisect2 = distance(mid_p1p3,self.p2)
+        abs_bisect3 = distance(mid_p2p3,self.p1)     
+        #set angle_bisection_start and angle_bisection_end
+        if (abs_bisect1 >= abs_bisect2 and abs_bisect1 >= abs_bisect3):
+            self.angle_bisection_start = mid_p1p2
+            self.angle_bisection_end = self.p3
+        elif(abs_bisect2 >= abs_bisect1 and abs_bisect2 >= abs_bisect3):
+            self.angle_bisection_start = mid_p1p3
+            self.angle_bisection_end = self.p2
+        else:
+            self.angle_bisection_start = mid_p2p3
+            self.angle_bisection_end = self.p1   
+        #call the helper to calculate the local maximum in the distance map
+        #alonge the angle bisection line and set the triangle's center and 
+        #radius. Return 0 or 1 dependin on the correct finding of the radius
+        return self.find_local_maximum(distance_map)
+        
+    #Helper function to set the start and end of the correct angle bisection
+    #line if the triangle is normal.
+    #We set the angle bisection line to be bisection line of the internal angle
+    #(i.e. the only angle in the triangle not enclosed by the external edge).
+    cdef set_center_normal(self,np.ndarray[DTYPE_t,ndim=2] distance_map):
+        #find out which of the edges is the external edge (edge shared
+        #with the contour) and set its opposing point accordingly
+        if self.neighbor_list[0] == None: #-> edge1 is the external edge
+            self.angle_bisection_start = self.edge1.get_midpoint()
+            self.angle_bisection_end = self.edge2.get_cp(self.edge3)                     
+        elif self.neighbor_list[1] == None:# -> edge2 is the external edge
+            self.angle_bisection_start = self.edge2.get_midpoint()
+            self.angle_bisection_end = self.edge1.get_cp(self.edge3)
+        else: # -> edge3 is the external edge
+            self.angle_bisection_start = self.edge3.get_midpoint()
+            self.angle_bisection_end = self.edge1.get_cp(self.edge2)   
+        #call the helper to calculate the local maximum in the distance map
+        #alonge the angle bisection line and set the triangle's center and 
+        #radius. Return 0 or 1 dependin on the correct finding of the radius   
+        return self.find_local_maximum(distance_map)
 
-    #helper function to calculate and set the radius and centroid of the
-    #triangle. If the radius cannot be found by looking up the coordinates
-    #of the centroid in the distance-map, the radius defaults to 1.0. Every
-    #time this is the case, the function returns 1 instead of the usual 0
-    #so we are able to track the number of times we defaulted to 1.0.
-    #In general, this happens for weird geometries every once in a while (100 
-    #cases for 100k triangles is completely normal and nothing to worry about).
-    #If the number of defaults does not get out of hand, the impact of the 
-    #default-triangle-radii will be negligible
-    cdef set_radius_and_center(CshapeTriangle self, \
-                                 np.ndarray[DTYPE_t,ndim=2] distance_map):
-        #helper variables
+    #Helper function to set the start and end of the correct angle bisection
+    #line if the triangle is an end.   
+    #We set the angle bisection line to be the bisection line of the external
+    #angle (i.e. the only angle that is only enclosed by external edges.)
+    cdef set_center_end(self,np.ndarray[DTYPE_t,ndim=2] distance_map):
+        #find out which of the edges are the external edges:
+        cdef Csegment external1,external2, internal     
+        if self.edge1.triangle1 != None and self.edge1.triangle2 != None:
+            internal = self.edge1
+            external1 = self.edge2
+            external2 = self.edge3
+        elif self.edge2.triangle1 != None and self.edge2.triangle2 != None:
+            internal = self.edge2
+            external1 = self.edge1
+            external2 = self.edge3
+        else:
+            internal = self.edge3
+            external1 = self.edge1
+            external2 = self.edge2            
+        self.angle_bisection_start = internal.get_midpoint()
+        self.angle_bisection_end = external1.get_cp(external2)
+        #call the helper to calculate the local maximum in the distance map
+        #alonge the angle bisection line and set the triangle's center and 
+        #radius. Return 0 or 1 dependin on the correct finding of the radius 
+        return self.find_local_maximum(distance_map)
+
+    #Helper function to find a local maximum in the distance map along a line.
+    #Start and end of the line are stored in the triangle's variables
+    #"angle_bisection_start" and "angle_bisection_end"
+    cdef find_local_maximum(self,np.ndarray[DTYPE_t,ndim=2] distance_map):
+        #declaration of helper variables
         cdef double x1, y1, x2, y2, length, lamb, curr_x, curr_y
         cdef int int_x, int_y
         cdef double direction_x, direction_y, max_distance
         cdef double max_x, max_y
+        
         #use typed indexing for fast array acces
         DTYPE = np.int
         cdef DTYPE_t curr_distance
-        assert distance_map.dtype == DTYPE   
-        #these initializations are the same for all triangles
+        assert distance_map.dtype == DTYPE  
+        
+        #initialization of helper variables
         max_distance = 0
-        max_x = -1
-        max_y = -1
+        max_x = -1.0
+        max_y = -1.0
         lamb = 0.1 
+        x1 = self.angle_bisection_end.x        
+        y1 = self.angle_bisection_end.y
+        x2 = self.angle_bisection_start.x
+        y2 = self.angle_bisection_start.y
+        curr_x = x1
+        curr_y = y1
+        direction_x = x2-x1
+        direction_y = y2-y1
+        length = sqrt((y2-y1)**2 + (x2-x1)**2)
         
-        #for end-triangles, the triangle centroid will be set to the shared
-        #point between the two external segments. This is the case because
-        #the centroid later is used to represent the position of the corres-
-        #ponding node in the network. As end-triangles are situated at the 
-        #network's tip and we want to capture as much of the network's struc-
-        #ture as possible, it is logical to set the centroid to the outermost
-        #point.
-        #To set the triangles radius, we are looking for the point with the
-        #largest distance to the edges of the structure along a line from the 
-        #middle of the triangle's only internal edge its opposing point.        
-        if self.typ == "end": 
-            #initialize helper-variables
-            x1 = self.p3.x        
-            y1 = self.p3.y
-            x2 = (self.p1.x + self.p2.x)/2.0
-            y2 = (self.p1.y + self.p2.y)/2.0
-            direction_x = x2-x1
-            direction_y = y2-y1
-            length = sqrt((y2-y1)**2 + (x2-x1)**2)
-            curr_x = x1
-            curr_y = y1
-            #search along a line for a local maximum in the distance map
-            while(sqrt((curr_y - y1)**2 + (curr_x - x1)**2) < length):
-                int_x = int(round(curr_x))
-                int_y = int(round(curr_y))
-                curr_distance = distance_map[int_y, int_x]
-                if curr_distance > max_distance:
-                    max_distance = curr_distance
-                curr_x += lamb*direction_x
-                curr_y += lamb*direction_y
-            self.radius = max_distance       
-            #set the center to the "tip point"
-            if self.edge1.triangle2 != None:
-                self.centroid = self.edge2.get_cp(self.edge3)
-            elif self.edge2.triangle2 != None:
-                self.centroid = self.edge1.get_cp(self.edge3)
-            else:
-                self.centroid = self.edge1.get_cp(self.edge2)
-            #we have found a local maximum so there was no need to default to
-            #1.0 so we return 0.
+        #search along a line for a local maximum in the distance map
+        while(sqrt((curr_y - y1)**2 + (curr_x - x1)**2) < length):
+            int_x = int(round(curr_x))
+            int_y = int(round(curr_y))
+            curr_distance = distance_map[int_y, int_x]
+            if curr_distance > max_distance:
+                max_distance = curr_distance
+                max_x = curr_x
+                max_y = curr_y
+            curr_x += lamb*direction_x
+            curr_y += lamb*direction_y
+            
+        #if we found a maximum, set radius and center and return 0
+        if (max_y != -1 and max_x != -1):
+            self.radius = max_distance
+            #if the triangle is an end triangle, set the center to the tip
+            if self.typ == "end":
+                if self.edge1.triangle2 != None:
+                    self.center = self.edge2.get_cp(self.edge3)
+                elif self.edge2.triangle2 != None:
+                    self.center = self.edge1.get_cp(self.edge3)
+                else:
+                    self.center = self.edge1.get_cp(self.edge2) 
+            #else set the center to the location of the local maximum
+            else: 
+                self.center = Cpoint(max_x,max_y)
             return 0
-        
-        #For normal triangles, we will search for a local maximum in the dist-
-        #ance map along the line from the triangle's single external edge to
-        #its opposing point. We will set the radius to the value of the local
-        #maximum and the position of the centroid to the position of the 
-        #maximum.
-        elif self.typ == "normal": 
-            #initialize helper-variables
-            x1 = self.opp_point.x        
-            y1 = self.opp_point.y
-            x2 = self.half_ext_edge.x
-            y2 = self.half_ext_edge.y
-            curr_x = x1
-            curr_y = y1
-            direction_x = x2-x1
-            direction_y = y2-y1
-            length = sqrt((y2-y1)**2 + (x2-x1)**2)
-            #search along a line for a local maximum in the distance map
-            while(sqrt((curr_y - y1)**2 + (curr_x - x1)**2) < length):
-                int_x = int(round(curr_x))
-                int_y = int(round(curr_y))
-                curr_distance = distance_map[int_y, int_x]
-                if curr_distance > max_distance:
-                    max_distance = curr_distance
-                    max_x = curr_x
-                    max_y = curr_y
-                curr_x += lamb*direction_x
-                curr_y += lamb*direction_y
-            #if we found a maximum, set radius and centroid and return 0
-            if (max_y != -1 and max_x != -1):
-                self.radius = max_distance
-                self.centroid = Cpoint(max_x,max_y)
-                return 0
-            #if we didn't find a maximum, default to a radius of 1.0, set the
-            #centroid to the real centroid of the triangle and return 1
-            else:
-                self.centroid = Cpoint( \
-                            round((self.p1.x+self.p2.x+self.p3.x)*(1.0/3.0)),\
-                            round((self.p1.y+self.p2.y+self.p3.y)*(1.0/3.0)))                                                      
-                self.radius = 1
-                return 1
-         
-        #For junction triangles we will search for a local maximum in the dist-
-        #ance map along the longest angle-bisection line of the triangle.
-        #The starting and endpoint of the longest angle bisection line (h and
-        #opp_point have been determined alongside the determination of the
-        #triangle's type).              
-        elif self.typ == "junction":
-            #initialization of helper-variables
-            x1 = self.opp_point.x        
-            y1 = self.opp_point.y
-            curr_x = x1
-            curr_y = y1
-            x2 = self.h.x
-            y2 = self.h.y
-            direction_x = x2-x1
-            direction_y = y2-y1
-            length = sqrt((y2-y1)**2 + (x2-x1)**2)
-            #search along a line for a local maximum in the distance map
-            while(sqrt((curr_y - y1)**2 + (curr_x - x1)**2) < length):
-                int_x = int(round(curr_x))
-                int_y = int(round(curr_y))
-                curr_distance = distance_map[int_y, int_x]
-                if curr_distance > max_distance:
-                    max_distance = curr_distance
-                    max_x = curr_x
-                    max_y = curr_y
-                curr_x += lamb*direction_x
-                curr_y += lamb*direction_y
-            #if we found a maximum, set radius and centroid and return 0
-            if (max_y != -1 and max_x != -1):
-                self.radius = max_distance
-                self.centroid = Cpoint(max_x,max_y)
-                return 0
-            else:
-            #if we didn't find a maximum, default to a radius of 1.0, set the
-            #centroid to the real centroid of the triangle and return 1
-                self.centroid = Cpoint(\
-                            round((self.p1.x+self.p2.x+self.p3.x)*(1.0/3.0)),\
-                            round((self.p1.y+self.p2.y+self.p3.y)*(1.0/3.0))) 
-                self.radius = 1.0
-                return 1
-        #We do not set radius and centroid for isolated triangles because
-        #we ignore them in the following processing anyways.
+            
+        #if we didn't find a maximum, default to a radius of 1.0, set the
+        #center to the centroid of the triangle and return 1
         else:
-            return 0
-        
+            self.center = Cpoint(\
+                        round((self.p1.x+self.p2.x+self.p3.x)*(1.0/3.0)),\
+                        round((self.p1.y+self.p2.y+self.p3.y)*(1.0/3.0))) 
+            self.radius = 1.0
+            return 1
+            
+    #Ordering of triangles. We only need to check if triangles are equal,
+    #i.e. if they are composed of the same points. All other comparisions
+    #are not implemented
     def __richcmp__(CshapeTriangle self, CshapeTriangle other, int op):            
         #special case if we try to compare to a None-object
         cdef int compare
@@ -523,7 +473,7 @@ cdef class CshapeTriangle:
             compare = -1
             return richcmp_helper(compare,op)
         #we only need the "==" comparison later on so we do not resolve the
-        #other cases. It is kind of subjective how to handle "<" and ">" any-
+        #other cases. It is kind of ambiguous how to handle "<" and ">" any-
         #ways.
         if op == 0 or op == 1 or op == 4 or op == 5:
             return False
@@ -535,6 +485,11 @@ cdef class CshapeTriangle:
             compare = 0
         else: compare = 1 
         return richcmp_helper(compare,op)
+        
+    def __str__(self):
+        s = self.edge1.__str__() + " | " + self.edge1.__str__() + " | " + \
+            self.edge3.__str__()
+        return s
 
 #reusable helper for __richcmp__                
 cdef inline bint richcmp_helper(int compare, int op):
@@ -569,17 +524,15 @@ def CbuildTriangles(list points, list triangle_point_indices):
     #definition of helper variables
     cdef i
     cdef dict segment_dict = {}
-    cdef int x1, x2, x3, y1, y2, y3, N
+    cdef int x1, x2, x3, y1, y2, y3
     cdef Cpoint p1,p2,p3
     cdef Csegment s1,s2,s3
     cdef CshapeTriangle new_trianlge
     cdef list t,triangles
     
     triangles = []
-    N = len(triangle_point_indices)
-    for i in range(N):
+    for i,t in enumerate(triangle_point_indices):
         #resolve the indices to coordinates
-        t = triangle_point_indices[i]
         x1 = points[t[0]][0]
         y1 = points[t[0]][1]
         x2 = points[t[1]][0]
@@ -622,87 +575,122 @@ def CbuildTriangles(list points, list triangle_point_indices):
         
         #build the triangles with segments taken from the segment dict, 
         #ensuring the triangle's neighbors can be set correctly
-        new_triangle = CshapeTriangle(segment_dict[key1],segment_dict[key2],segment_dict[key3])
+        new_triangle = CshapeTriangle(segment_dict[key1],segment_dict[key2],\
+                                      segment_dict[key3])
         triangles.append(new_triangle)
-    
     return triangles
-    
-cdef get_neighbor(CshapeTriangle triangle,Csegment edge):
-    cdef CshapeTriangle neighbor = edge.get_triangle1()
-    if neighbor == triangle:
-        neighbor = edge.get_triangle2()
-    else:
-        neighbor = edge.get_triangle1()
-    return neighbor
 
+#Create the adjacency matrix of the graph from the list of triangles.
+#First we give each triangle an index according to its position in the list.
+#If we find that a triangle with index i neighbors another triangle with index
+#j, we create an entry in the adjacency matrix at position (i,j). The value
+#of the entry is the distance between the centers of the two triangles.
 def CcreateTriangleAdjacencyMatrix(list triangles not None):
-    cdef int dim, j, i
-    cdef CshapeTriangle neighbor1, neighbor2, neighbor3,t
-                
+    cdef int dim, j, i, index
+    cdef float dist
+    cdef CshapeTriangle neighbor,t
+    cdef float dist1, dist2, dist3
+     
+    #initialize the adjacency matrix and triangle indices        
     dim = len(triangles)
     adjacency_matrix = lil_matrix((dim,dim))
-    
-    for j in range(dim):
-        adjacency_matrix[j,j]=0
-        triangles[j].set_index(j)
-        
+    adjacency_matrix.setdiag(np.zeros((dim,1)))    
     for i in range(dim):
-        t = triangles[i]
-        
-        if t.typ == "junction":
-            adjacency_matrix[i,t.get_neighbor1().get_index()] = \
-                    distance(t.get_centroid(),t.get_neighbor1().get_centroid())
-            adjacency_matrix[i,t.get_neighbor2().get_index()] = \
-                    distance(t.get_centroid(),t.get_neighbor2().get_centroid())
-            adjacency_matrix[i,t.get_neighbor3().get_index()] = \
-                    distance(t.get_centroid(),t.get_neighbor3().get_centroid())
-            adjacency_matrix[t.get_neighbor1().get_index(),i] = \
-                    distance(t.get_centroid(),t.get_neighbor1().get_centroid())
-            adjacency_matrix[t.get_neighbor2().get_index(),i] = \
-                    distance(t.get_centroid(),t.get_neighbor2().get_centroid())
-            adjacency_matrix[t.get_neighbor3().get_index(),i] = \
-                    distance(t.get_centroid(),t.get_neighbor3().get_centroid())
-        elif t.typ == "normal":
-            adjacency_matrix[i,t.get_neighbor1().get_index()] = \
-                    distance(t.get_centroid(),t.get_neighbor1().get_centroid())
-            adjacency_matrix[i,t.get_neighbor2().get_index()] = \
-                    distance(t.get_centroid(),t.get_neighbor2().get_centroid())
-            adjacency_matrix[t.get_neighbor1().get_index(),i] = \
-                    distance(t.get_centroid(),t.get_neighbor1().get_centroid())
-            adjacency_matrix[t.get_neighbor2().get_index(),i] = \
-                    distance(t.get_centroid(),t.get_neighbor2().get_centroid())
-        else:
-            adjacency_matrix[i,t.get_neighbor1().get_index()] = \
-                    distance(t.get_centroid(),t.get_neighbor1().get_centroid())
-            adjacency_matrix[t.get_neighbor1().get_index(),i] = \
-                    distance(t.get_centroid(),t.get_neighbor1().get_centroid())
-                          
-    return adjacency_matrix
+        triangles[i].set_index(i)
     
-def CbruteforcePruning(adjacency_matrix,np.ndarray triangles,int order,verbose):
-    cdef int curr_order = 0
-    cdef int i
-    cdef list indices
-    cdef np.ndarray rows
+    #iterate over all triangles and create entries in the adjacency matrix
+    #based on wheter the current triangle is junction, normal or end
+    for j in range(dim):
+        t = triangles[j]
+        
+        if t.get_type() == "junction":
+            for k in range(3):
+                neighbor = t.get_neighbor(k)
+                dist = distance(t.get_center(),neighbor.get_center())                
+                index = neighbor.get_index()
+                adjacency_matrix[j,index] = dist
+                    
+        elif t.get_type() == "normal":
+            for k in range(3):
+                neighbor = t.get_neighbor(k)
+                if neighbor != None:                   
+                    dist = distance(t.get_center(),neighbor.get_center())                 
+                    index = neighbor.get_index() 
+                    adjacency_matrix[j,index] = dist
 
+        elif t.get_type() == "end":
+            for k in range(3):
+                neighbor = t.get_neighbor(k)
+                if neighbor != None:                
+                    dist = distance(t.get_center(),neighbor.get_center())             
+                    index = neighbor.get_index()
+                    adjacency_matrix[j,index] = dist                   
+        else:
+            print "triangle without type detected... aborting!"
+    
+    return adjacency_matrix
+
+#Helper function to update the pointers to the triangles stored in edges when
+#a triangle is deleted during the pruning process    
+def update_edge_pointers(CshapeTriangle t, CshapeTriangle n):
+    cdef Csegment edge = t.get_connecting_edge(n)
+    if edge.get_triangle1() == t:
+        edge.set_triangle1(None)
+    elif edge.get_triangle2() == t:
+        edge.set_triangle2(None) 
+    else:
+        print "edge relations wrong!"
+
+#Helper function to update the pointers to the neighboring triangles stored
+#in the triangle itself when a triangle is deleted during the pruning process        
+def update_neighbor_pointers(CshapeTriangle end):
+    cdef CshapeTriangle neighbor = None
+    cdef int i = 0
+    
+    #find the neighbor and disconnect the end from the neighbor
+    for i in range(3):
+        if end.get_neighbor(i) != None:
+            neighbor = end.get_neighbor(i)
+            end.set_neighbor(i,None)
+            break
+
+    #disconnect the neighbor from the end
+    for j in range(3):
+        if neighbor.get_neighbor(j) == end:
+            neighbor.set_neighbor(j,None)
+            break
+    return neighbor
+    
+#Often a noisy contour leads to the creation of end-triangles which are
+#are directly attached to junction triangles. We prune away these structures
+#to prevent the creation of fake junctions and therefore fake branches.
+#The order up to which triangles will be pruned away can be controlled by the
+#main script.
+#TODO: find a way to not shorten ALL branches during this process!
+def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
+    cdef int curr_order,i
+    cdef list indices 
+    cdef CshapeTriangle t,neighbor
+
+    curr_order = 0
     while curr_order < order:
+        indices = []
         if verbose:
             print "\t from bruteforcePruning: current order",curr_order
         
-        rows = adjacency_matrix.rows
-        indices = []
-        for i in xrange(adjacency_matrix.shape[0]):
-            if(len(rows[i]) == 1):
+        #if a triangle is an end, it will get pruned
+        for i,t in enumerate(triangles):
+            if t.get_type() == "end":
                 indices.append(i)
-                
-        indices = list(set(indices).symmetric_difference(set(range(adjacency_matrix.shape[0]))))
-        adjacency_matrix = adjacency_matrix.tocsc()
-        adjacency_matrix = adjacency_matrix[:,indices]
-        adjacency_matrix = adjacency_matrix[indices,:]
-        adjacency_matrix = lil2(adjacency_matrix) 
+                neighbor = update_neighbor_pointers(t)
+                update_edge_pointers(t,neighbor) 
+
+        indices = list(set(indices).symmetric_difference(set\
+                 (range(len(triangles)))))
+                 
         triangles = triangles[indices]
+        for t in triangles:
+            t.set_type()
         curr_order += 1
-        
-    return (adjacency_matrix,triangles)
-                
-        
+
+    return triangles

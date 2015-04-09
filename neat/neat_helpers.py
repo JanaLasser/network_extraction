@@ -28,7 +28,7 @@ from C_neat_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
 figure_format = ".png"                                                         #plot format
-figure_dpi = 2400                                                               #plot resolution
+figure_dpi = 600                                                               #plot resolution
 markersize = 3
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
@@ -208,31 +208,6 @@ def flattenContours(raw_contours):
         converted_contours.append(new_contour)    
     return converted_contours
     
-def countDuplicates(thresholded_contours):
-    '''
-    Debugging function intended to count the number of nodes that have similar
-    x coordinates or similar y coordinates.
-    
-    Parameter:
-    ---------
-        thresholded_contours: list of lists of lists, list of contours composed
-        of lists of 2-element-lists containing the coordinates
-    '''
-    #create nx2 dimensional array containing x- and y coordinates
-    contour_list = np.asarray(thresholded_contours)
-    all_points = []
-    for tc in contour_list:
-        all_points.extend(np.asarray(tc).flatten())
-    all_points = np.asarray(all_points).reshape(len(all_points)/2,2)
-    
-    #count duplicates
-    number_all = len(all_points)
-    number_unique_x = len(set(all_points[0:,0]))
-    number_unique_y = len(set(all_points[0:,1]))
-    duplicate_x = number_all - number_unique_x
-    duplicate_y = number_all - number_unique_y
-    print "found %d x-duplicates\nfound %d y-duplicates"%(duplicate_x,duplicate_y)
-    
 def thresholdContours(contours,threshold):
     '''
     Thresholds a given list of contours by length.
@@ -250,7 +225,7 @@ def thresholdContours(contours,threshold):
     thresholded_contours = []
     for c,i in zip(contours,xrange(len(contours))):
         if (len(c) > threshold):
-            thresholded_contours.append(c)           
+            thresholded_contours.append(c)
     return thresholded_contours
 
 def roundTripConnect(start, end):
@@ -288,7 +263,7 @@ def getInteriorPoint(contour):
     from shapely.geometry import Polygon
     poly = Polygon(contour)    
      
-    #check if the centroid of the contour already qualifies as interior point
+    #check if the center of the contour already qualifies as interior point
     x = 0
     y = 0
     for point in contour:
@@ -297,11 +272,11 @@ def getInteriorPoint(contour):
     x /= len(contour)
     y /= len(contour)
     
-    centroid = Point(x,y)
-    if centroid.within(poly):
+    center = Point(x,y)
+    if center.within(poly):
         return [x,y] 
     
-    #if the centroid is no good, invoke a more sofisticated method
+    #if the center is no good, invoke a more sofisticated method
     p1 = Cpoint(contour[0][0],contour[0][1])
     cp = Cpoint(contour[1][0],contour[1][1])
     p2 = Cpoint(contour[2][0],contour[2][1])
@@ -396,9 +371,8 @@ def buildTriangles(triangulation):
     triangle_point_indices = list(triangulation.elements)
     return CbuildTriangles(points, triangle_point_indices)
     
-def bruteforcePruning(adjacency_matrix,triangles,order,verbose):
-    return CbruteforcePruning(adjacency_matrix,np.asarray(triangles),\
-    order,verbose)
+def bruteforcePruning(triangles,order,verbose):
+    return CbruteforcePruning(np.asarray(triangles),order,verbose)
     
 def cvDistanceMap(image):
     '''
@@ -454,13 +428,13 @@ def createGraph(adjacency_matrix,all_triangles,height):
     #create basic graph from neighborhood relations
     G = nx.Graph(adjacency_matrix)
     
-    #extract and set x-coordinates of nodes from triangle centroids
-    x = [triangle.get_centroid().get_x() for triangle in all_triangles]
+    #extract and set x-coordinates of nodes from triangle centers
+    x = [triangle.get_center().get_x() for triangle in all_triangles]
     attr = dict(zip(np.arange(len(x)),x))
     nx.set_node_attributes(G,'x',attr)
     
-    #extract and set y-coordinates of nodes from triangle get_centroid()s
-    y = [triangle.get_centroid().get_y() for triangle in all_triangles]
+    #extract and set y-coordinates of nodes from triangle centers
+    y = [triangle.get_center().get_y() for triangle in all_triangles]
     attr = dict(zip(np.arange(len(y)),y))
     nx.set_node_attributes(G,'y',attr)
     
@@ -482,7 +456,7 @@ def createGraph(adjacency_matrix,all_triangles,height):
     attr = dict(zip(G.edges(), length_edge))
     nx.set_edge_attributes(G,'weight',attr)
     
-    y = [triangle.get_centroid ().get_y() for triangle in all_triangles]
+    y = [triangle.get_center().get_y() for triangle in all_triangles]
     y = np.array(y)
     y = height - y
     y = list(y)
@@ -492,7 +466,6 @@ def createGraph(adjacency_matrix,all_triangles,height):
     return nx.connected_component_subgraphs(G)[0]
     
 def removeRedundantNodes(G,verbose,mode):
-    print "mode: ",mode
     '''
         Removes a specified number of redundant nodes from the graph. Nodes
         should be removed in place but the graph is returned nevertheless.
@@ -656,18 +629,20 @@ def drawTriangulation(h,triangles,image_name,dest):
     colors = {"junction":["orange",3],"normal":["purple",1],"end":["red",2]}
     
     #normal triangles
-    for t in triangles:
+    for i,t in enumerate(triangles):
             x = [t.get_p1().get_x(),t.get_p2().get_x(),t.get_p3().get_x(),\
                       t.get_p1().get_x()]
             y = [m(h,t.get_p1().get_y()),m(h,t.get_p2().get_y()),\
                       m(h,t.get_p3().get_y()),m(h,t.get_p1().get_y())]
             
-            c = colors[t.get_typ()][0]
-            zorder = colors[t.get_typ()][1]
-            plt.plot(x,y,'o',color=c,linewidth=1.5,zorder=zorder,
+            c = colors[t.get_type()][0]
+            zorder = colors[t.get_type()][1]
+            ax.plot(x,y,'o',color=c,linewidth=1.5,zorder=zorder,
                      markersize=0.1,mew=0,alpha=1.0)
-            plt.fill(x,y,facecolor=c,alpha=0.6,\
+            ax.fill(x,y,facecolor=c,alpha=0.6,\
                      edgecolor=c,linewidth=0.05)
+            ax.text((x[0]+x[1]+x[2])/3.0-0.5,(y[0]+y[1]+y[2])/3.0-0.5,"%d"%i,\
+                    fontsize=1)
             
     plt.savefig(join(dest,image_name + "_triangulation" + figure_format),\
                      dpi=figure_dpi)

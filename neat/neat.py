@@ -195,22 +195,18 @@ raw_contours = nh.getContours(image)							     #Extract raw contours.
 flattened_contours = nh.flattenContours(raw_contours)       			     #Flatten nested contour list
 
 if debug:                                                                      #debug output
-    print pa + "\tContours converted, we have %i contours."\
+    print pa + "\tContours converted, we have %i contour(s)."\
            %(len(flattened_contours))
-													
-thresholded_contours = nh.thresholdContours(flattened_contours,\
-    contour_threshold)                                                         #contours shorter than "threshold" are discarded.
+													                                                        #contours shorter than "threshold" are discarded.
 
 if debug:                                                                      #debug output
-    print pa + "\tContours thresholded, %i contours left."\
-           %(len(thresholded_contours)) 
-    nh.drawContours(height,thresholded_contours,image_name,dest)
+    nh.drawContours(height,flattened_contours,image_name,dest)
 
 longest_index = 0											     #Position of longest contour.
 longest_length = 0										     #Length of longest contour.
-for c in xrange(len(thresholded_contours)):						     #Find index of longest contour.
-    if(len(thresholded_contours[c])>longest_length):
-        longest_length = len(thresholded_contours[c])
+for c in xrange(len(flattened_contours)):						     #Find index of longest contour.
+    if(len(flattened_contours[c])>longest_length):
+        longest_length = len(flattened_contours[c])
         longest_index = c
 
 if verbose:       
@@ -225,22 +221,23 @@ Mesh Creation:
         - The mesh is created of points and facets where every facet is the
           plane spanned by one contour.
 """ 
-thresholded_contours = np.asarray(thresholded_contours)                        #add a bit of noise to increase stability of triangulation algorithm
-for c in thresholded_contours:
+flattened_contours = np.asarray(flattened_contours)                            #add a bit of noise to increase stability of triangulation algorithm
+flattened_contours = nh.thresholdContours(flattened_contours,3)                #filter out contours smaller than 3 in case there are any left
+for c in flattened_contours:
     for p in c:
         p[0] = p[0] + 0.1*np.random.rand()
         p[1] = p[1] + 0.1*np.random.rand()
    			     
-mesh_points = thresholded_contours[longest_index]                              #First add longest contour to mesh.
+mesh_points = flattened_contours[longest_index]                                #First add longest contour to mesh.
 mesh_facets = nh.roundTripConnect(0,len(mesh_points)-1)				     #Create facets from the longest contour.
 
 hole_points = []  										     #Every contour other than the longest needs an interiour point.
-for i in xrange(len(thresholded_contours)):						     #Traverse all contours. 
+for i in xrange(len(flattened_contours)):						     #Traverse all contours.   
     curr_length = len(mesh_points)									
     if(i == longest_index):                                                    #Ignore longest contour.
         pass
     else:					                                             #Find a point that lies within the contour.
-        contour = thresholded_contours[i]
+        contour = flattened_contours[i]
         interior_point = nh.getInteriorPoint(contour)        										
         hole_points.append((interior_point[0],interior_point[1]))		     #Add point to list of interior points.
         mesh_points.extend(contour)							     #Add contours identified by their interior points to the mesh.
@@ -290,24 +287,23 @@ end = 0
 isolated_indices = []
 default_triangles = 0
 for i in range(len(triangles)):                                                
-    t = triangles[i]
-    default_triangles += t.set_typ(distance_map)                               #set the triangle's type, midpoint and radius
-    if t.get_typ() == "junction":                                              #count the number of each triangle type for debugging
+    t = triangles[i]                                                           #set the triangle's type
+    t.set_type()    
+    if t.get_type() == "junction":                                             #count the number of each triangle type for debugging
         junction += 1
-    elif t.get_typ() == "normal":
+    elif t.get_type() == "normal":
         normal += 1
-    elif t.get_typ() == "end":
+    elif t.get_type() == "end":
         end += 1
-    elif t.get_typ() == "isolated":
-        isolated_indices.append(i)    
+    elif t.get_type() == "isolated":
+        isolated_indices.append(i)
 triangles = list(np.delete(np.asarray(triangles), isolated_indices))           #remove isolated triangles from the list of triangles
 
 if debug:                                                                      #debug output
-    nh.drawTriangulation(height,triangles,image_name,dest)
     print pa + "\tTriangle types:"
     print pa + "\tjunction: %d, normal: %d, end: %d, isolated: %d"\
                 %(junction,normal,end,len(isolated_indices))
-    print pa + "\ttriangle radii defaulted to 1.0: ",default_triangles
+                
 if verbose:	           
     step = time.clock()                                                        #progress output
     print pa + "Done in %1.2f sec." %(step-previous_step)
@@ -321,8 +317,6 @@ Triangle adjacency matrix:
         - create a copy of the adjacency matrix for the pruning process
 
 """
-adjacency_matrix = nh.createTriangleAdjacencyMatrix(triangles)       	     #Create an adjacency matrix of all triangles with euclidean distances between triangles as link weights 
-
 if verbose:                        									    					     
     step = time.clock()                                                        #progress output
     print pa + "Done in %1.2f sec."%(step-previous_step)
@@ -337,8 +331,32 @@ Graph creation and improvement
           and radius stored in the adjacency matrix and
           the list of triangles.
 """
-adjacency_matrix,triangles = nh.bruteforcePruning(adjacency_matrix,\
-                             triangles,order,verbose)                          #prune away the "order" number of triangles at the ends of the network
+triangles = nh.bruteforcePruning(triangles,order,verbose)                      #prune away the "order" number of triangles at the ends of the network
+
+default_triangles = 0
+junction = 0
+normal = 0
+end = 0
+isolated = 0
+for t in triangles:
+    default_triangles += t.set_center(distance_map)
+    if t.get_type() == "junction":                                             #count the number of each triangle type for debugging
+        junction += 1
+    elif t.get_type() == "normal":
+        normal += 1
+    elif t.get_type() == "end":
+        end += 1
+    elif t.get_type() == "isolated":
+        isolated += 1
+if debug:
+    nh.drawTriangulation(height,triangles,image_name,dest)                     #debug output
+    print pa + "\tTriangles defaulted to zero: %d"%default_triangles
+    print pa + "\tTriangle types:"
+    print pa + "\tjunction: %d, normal: %d, end: %d, isolated: %d"\
+                %(junction,normal,end,len(isolated_indices))
+
+adjacency_matrix = nh.createTriangleAdjacencyMatrix(triangles)
+
 if verbose:
     step = time.clock()                                                        #progress output
     print pa + "Done in %1.2f sec."%(step-previous_step)
@@ -346,6 +364,7 @@ if verbose:
     previous_step = step
 
 G = nh.createGraph(adjacency_matrix,triangles,height)                          #creation of graph object 
+print "number of nodes in the graph: ",len(G.nodes())
 
 if verbose:
     step = time.clock()                                                        #progress output
