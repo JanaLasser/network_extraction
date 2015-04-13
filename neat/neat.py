@@ -349,7 +349,7 @@ for t in triangles:
     elif t.get_type() == "isolated":
         isolated += 1
 if debug:
-    nh.drawTriangulation(height,triangles,image_name,dest)                     #debug output
+    nh.drawTriangulation(height,triangles,image_name,dest,distance_map)        #debug output
     print pa + "\tTriangles defaulted to zero: %d"%default_triangles
     print pa + "\tTriangle types:"
     print pa + "\tjunction: %d, normal: %d, end: %d, isolated: %d"\
@@ -382,6 +382,8 @@ Redundant node removal
 """
 if redundancy == 2: 
     nh.drawAndSafe(G,image_name,dest,2,verbose,plot)                           #draw and safe graph with redundant nodes                         
+
+nh.drawGraphTriangulation(height,G,triangles,image_name,dest,distance_map)
 
 if redundancy == 1 or redundancy == 2:                                                            #draw and safe graph with half redundant nodes
     G = nh.removeRedundantNodes(G,verbose,1)

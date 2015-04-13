@@ -28,7 +28,7 @@ from C_neat_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
 figure_format = ".png"                                                         #plot format
-figure_dpi = 600                                                               #plot resolution
+figure_dpi = 2000                                                               #plot resolution
 markersize = 3
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
@@ -51,6 +51,8 @@ def getImage(image_path):
     
     image = Image.open(image_path)
     image = image.convert('L')
+    w,h = image.size
+    image.resize((w*2,h*2),resample=Image.BICUBIC )
     image = np.asarray(image,dtype=np.uint8)
     return image
 
@@ -532,6 +534,60 @@ def removeRedundantNodes(G,verbose,mode):
         if order == new_order:
             break
     return G
+
+def drawGraphTriangulation(h,G,triangles,image_name,dest,distance_map):
+    def m(h,y):
+        return h - y
+
+
+    plt.clf()
+    ax = plt.gca()
+    ax.set_aspect('equal', 'datalim')
+    distance_map = np.where(distance_map > 0,(distance_map)**1.5 + 20,0)
+    ax.imshow(np.abs(np.flipud(distance_map)-255),cmap='gray')
+    plt.title("Triangulation: " + image_name)
+    colors = {"junction":["orange",3],"normal":["purple",1],"end":["red",2]}
+    
+    #normal triangles
+    for i,t in enumerate(triangles):
+            x = [t.get_p1().get_x(),t.get_p2().get_x(),t.get_p3().get_x(),\
+                      t.get_p1().get_x()]
+            y = [m(h,t.get_p1().get_y()),m(h,t.get_p2().get_y()),\
+                      m(h,t.get_p3().get_y()),m(h,t.get_p1().get_y())]
+            
+            c = colors[t.get_type()][0]
+            zorder = colors[t.get_type()][1]
+            ax.plot(x,y,'o',color='black',linewidth=1.5,zorder=zorder,
+                     markersize=0.2,mew=0,alpha=1.0)
+            ax.fill(x,y,facecolor=c,alpha=0.25,\
+                     edgecolor=c,linewidth=0.05)
+            #ax.text((x[0]+x[1]+x[2])/3.0-0.5,(y[0]+y[1]+y[2])/3.0-0.5,"%d"%i,\
+            #        fontsize=1)
+    scale = 1 
+    pos = {}
+    for k in G.node.keys():
+        pos[k] = (G.node[k]['x']*scale, G.node[k]['y']*scale)
+    
+    widths = np.array([G[e[0]][e[1]]['conductivity'] for e in G.edges()])*scale
+    widths = 15./(np.amax(widths)*13)*widths
+
+    nx.draw_networkx_edges(G, pos=pos, width=widths,edgecolor='DarkSlateGray',
+                           alpha=0.4)
+    
+    colors = {3:"green",2:"green",1:"green"}
+    for node in G.nodes(data=True):
+        x = node[1]['x']*scale
+        y = node[1]['y']*scale
+        typ = len(nx.neighbors(G,node[0]))
+        if typ > 3:
+            typ = 3
+        if typ < 4:
+            c = colors[typ]
+            plt.plot(x,y,'+',color=c,markersize=0.1,mec=c)       
+    plt.savefig(join(dest,image_name + "_graph_and_triangulation" + ".png"),\
+                     dpi=figure_dpi)
+    
+
   
 def _drawGraph(G,verbose):
     '''
@@ -567,8 +623,6 @@ def _drawGraph(G,verbose):
         if typ > 3:
             typ = 3
         if typ < 3:
-            pass
-        else:
             c = colors[typ]
             plt.plot(x,y,'o',color=c,markersize=markersize,mec=c,alpha=0.8,mew=1)
         
@@ -608,9 +662,9 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose,plot):
     plt.close()
   
 
-def drawTriangulation(h,triangles,image_name,dest):
+def drawTriangulation(h,triangles,image_name,dest,distance_map):
     def m(h,y):
-        return h-y
+        return y
     '''
     Draws and saves an illustration of the triangulation. Triangles are
     already classified in end-triangles (red), normal-triangles (purple)
@@ -625,6 +679,7 @@ def drawTriangulation(h,triangles,image_name,dest):
     plt.clf()
     ax = plt.gca()
     ax.set_aspect('equal', 'datalim')
+    ax.imshow(distance_map,cmap='gray')
     plt.title("Triangulation: " + image_name)
     colors = {"junction":["orange",3],"normal":["purple",1],"end":["red",2]}
     
@@ -641,8 +696,8 @@ def drawTriangulation(h,triangles,image_name,dest):
                      markersize=0.1,mew=0,alpha=1.0)
             ax.fill(x,y,facecolor=c,alpha=0.6,\
                      edgecolor=c,linewidth=0.05)
-            ax.text((x[0]+x[1]+x[2])/3.0-0.5,(y[0]+y[1]+y[2])/3.0-0.5,"%d"%i,\
-                    fontsize=1)
+            #ax.text((x[0]+x[1]+x[2])/3.0-0.5,(y[0]+y[1]+y[2])/3.0-0.5,"%d"%i,\
+            #        fontsize=1)
             
     plt.savefig(join(dest,image_name + "_triangulation" + figure_format),\
                      dpi=figure_dpi)

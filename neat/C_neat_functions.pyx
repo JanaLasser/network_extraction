@@ -109,7 +109,7 @@ cdef class Csegment:
         else:
             self.p1 = p2
             self.p2 = p1         
-        self.midpoint = Cpoint((self.p1.x + self.p2.x)/2, (self.p1.y + self.p2.y)/2)
+        self.midpoint = Cpoint((self.p1.x+self.p2.x)/2,(self.p1.y+self.p2.y)/2)
    
     def __str__(self):
         return "(%d,%d) -> (%d,%d)"%\
@@ -356,19 +356,19 @@ cdef class CshapeTriangle:
     cdef set_center_normal(self,np.ndarray[DTYPE_t,ndim=2] distance_map):
         #find out which of the edges is the external edge (edge shared
         #with the contour) and set its opposing point accordingly
-        if self.neighbor_list[0] == None: #-> edge1 is the external edge
+    
+        if self.edge1.triangle1 == None or self.edge1.triangle2 == None:
             self.angle_bisection_start = self.edge1.get_midpoint()
-            self.angle_bisection_end = self.edge2.get_cp(self.edge3)                     
-        elif self.neighbor_list[1] == None:# -> edge2 is the external edge
+            self.angle_bisection_end = self.edge2.get_cp(self.edge3)
+        elif self.edge2.triangle1 == None or self.edge2.triangle2 == None:
             self.angle_bisection_start = self.edge2.get_midpoint()
             self.angle_bisection_end = self.edge1.get_cp(self.edge3)
-        else: # -> edge3 is the external edge
+        else:
             self.angle_bisection_start = self.edge3.get_midpoint()
-            self.angle_bisection_end = self.edge1.get_cp(self.edge2)   
-        #call the helper to calculate the local maximum in the distance map
-        #alonge the angle bisection line and set the triangle's center and 
-        #radius. Return 0 or 1 dependin on the correct finding of the radius   
-        return self.find_local_maximum(distance_map)
+            self.angle_bisection_end = self.edge2.get_cp(self.edge1)
+        
+        return self.find_center(distance_map)
+
 
     #Helper function to set the start and end of the correct angle bisection
     #line if the triangle is an end.   
@@ -395,6 +395,43 @@ cdef class CshapeTriangle:
         #alonge the angle bisection line and set the triangle's center and 
         #radius. Return 0 or 1 dependin on the correct finding of the radius 
         return self.find_local_maximum(distance_map)
+
+
+    #Helper function to find the "center" of a normal triangle.
+    #It has turned out that finding the center by looking for a local maxium
+    #in the distance map produces  zigzag graphs. To improve this, for normal
+    #triangles we choose as point which is contributed to the graph the 
+    #midpoint of the shorter of the two internal edges
+    cdef find_center(self, np.ndarray[DTYPE_t,ndim=2] dm):
+        cdef float radius
+        if self.edge1.triangle1 == None or self.edge1.triangle2 == None:
+            if distance(self.edge2.p1,self.edge2.p2) < \
+               distance(self.edge3.p1,self.edge3.p2):
+                self.center = self.edge2.get_midpoint()
+            else:
+                self.center = self.edge3.get_midpoint()
+
+        elif self.edge2.triangle1 == None or self.edge2.triangle2 == None:
+            if distance(self.edge1.p1,self.edge1.p2) < \
+               distance(self.edge3.p1,self.edge3.p2):
+                self.center = self.edge1.get_midpoint()
+            else:
+                self.center = self.edge3.get_midpoint()
+        else:
+            if distance(self.edge1.p1,self.edge1.p2) < \
+               distance(self.edge2.p1,self.edge2.p2):
+                self.center = self.edge1.get_midpoint()
+            else:
+                self.center = self.edge2.get_midpoint()
+
+        radius = dm[int(self.center.y),int(self.center.x)]
+        if radius == 0:
+            radius = 1
+            self.radius = radius
+            return 1
+        else:
+            self.radius = radius
+            return 0
 
     #Helper function to find a local maximum in the distance map along a line.
     #Start and end of the line are stored in the triangle's variables
@@ -443,9 +480,9 @@ cdef class CshapeTriangle:
             self.radius = max_distance
             #if the triangle is an end triangle, set the center to the tip
             if self.typ == "end":
-                if self.edge1.triangle2 != None:
+                if self.edge1.triangle2!=None and self.edge1.triangle1!=None:
                     self.center = self.edge2.get_cp(self.edge3)
-                elif self.edge2.triangle2 != None:
+                elif self.edge2.triangle2!=None and self.edge2.triangle1!=None:
                     self.center = self.edge1.get_cp(self.edge3)
                 else:
                     self.center = self.edge1.get_cp(self.edge2) 
@@ -479,9 +516,9 @@ cdef class CshapeTriangle:
             return False
         #obviously, triangles are euqal if all their points are the same (not
         #only if they are the same object!)
-        if ( (self.p1 == other.p1 or self.p1 == other.p2 or self.p1 == other.p3) and \
-             (self.p2 == other.p1 or self.p2 == other.p2 or self.p2 == other.p3) and \
-             (self.p3 == other.p1 or self.p3 == other.p2 or self.p3 == other.p3) ):
+        if ( (self.p1==other.p1 or self.p1==other.p2 or self.p1==other.p3) and\
+             (self.p2==other.p1 or self.p2==other.p2 or self.p2==other.p3) and\
+             (self.p3==other.p1 or self.p3==other.p2 or self.p3==other.p3) ):
             compare = 0
         else: compare = 1 
         return richcmp_helper(compare,op)
@@ -660,16 +697,67 @@ def update_neighbor_pointers(CshapeTriangle end):
             neighbor.set_neighbor(j,None)
             break
     return neighbor
+
+
+#Helper function to traverse along a part of the network given the previous
+#and the current triangle. Will return the next triangle along the edge
+def traverse_triangles(CshapeTriangle prev, CshapeTriangle curr):
+    if curr.get_type() != "normal":
+        print "tried to traverse from non-normal triangle, aborting!"
+        return
+    n1 = curr.get_neighbor(0)
+    n2 = curr.get_neighbor(1)
+    n3 = curr.get_neighbor(2)
+    if n1 != None:
+        neighbor1 = n1
+        if n2 != None:
+            neighbor2 = n2
+        else: 
+            neighbor2 = n3
+    else:
+        neighbor1 = n2
+        neighbor2 = n3
+    if neighbor1 == prev:
+        return neighbor2
+    else:
+        return neighbor1
+    
+
+#Helper function to confirm if an end-triangle is part of a surplus branch.
+#It will check for the occurrence of a junction triangle "order" steps down 
+#the road, if it does not find a junction, the end-triangle is a real tip and
+#will be spared from pruning.
+#Makes use of the "traverse_triangles" function to search downstream from the
+#end triangle.
+def confirm_surplus_branch(CshapeTriangle end,int order):
+    i = 0
+    curr = None
+    prev = end
+    while curr == None:
+        curr = end.get_neighbor(i)
+        i += 1
+    
+    j = 0
+    while j < order:
+        if curr.get_type() == "junction":
+            return True
+        temp = traverse_triangles(prev,curr)
+        prev = curr
+        curr = temp
+        j += 1
+    return False
+    
     
 #Often a noisy contour leads to the creation of end-triangles which are
-#are directly attached to junction triangles. We prune away these structures
-#to prevent the creation of fake junctions and therefore fake branches.
-#The order up to which triangles will be pruned away can be controlled by the
-#main script.
-#TODO: find a way to not shorten ALL branches during this process!
+#are directly attached or very close to junction triangles. We prune away these
+#structures to prevent the creation of fake junctions and therefore fake 
+#branches. The order up to which triangles will be pruned away can be
+#controlled by the main script.
+#TODO: maybe improve surplus branch confirmation so it does not search all
+#tips every time
 def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
     cdef int curr_order,i
-    cdef list indices 
+    cdef list indices
     cdef CshapeTriangle t,neighbor
 
     curr_order = 0
@@ -681,9 +769,12 @@ def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
         #if a triangle is an end, it will get pruned
         for i,t in enumerate(triangles):
             if t.get_type() == "end":
-                indices.append(i)
-                neighbor = update_neighbor_pointers(t)
-                update_edge_pointers(t,neighbor) 
+                #confirm that the end we are dealing with really is part of a
+                # end + N*normal + junction structure and not a real tip 
+                if confirm_surplus_branch(t,order):           
+                    indices.append(i)
+                    neighbor = update_neighbor_pointers(t)
+                    update_edge_pointers(t,neighbor)
 
         indices = list(set(indices).symmetric_difference(set\
                  (range(len(triangles)))))
