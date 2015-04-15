@@ -163,10 +163,12 @@ if image.ndim > 2:
     image = nh.RGBtoGray(image)                                                #In case it is not yet grayscale, convert to grayscale.  
 image = np.where(image < 127,0,1)                                              #In case it is not yet binary, perform thresholding  
 
+image = remove_small_objects(image.astype(bool),\
+                                 min_size=minimum_feature_size,connectivity=1)
 if image_improvement:                                                          #standard binary image noise-removal with opening followed by closing
     image = binary_opening(image,disk(3))                                      #maybe remove this processing step if depicted structures are really tiny
     image = binary_closing(image,disk(3))
-    
+
 image = remove_small_objects(image.astype(bool),\
                                  min_size=minimum_feature_size,connectivity=1)
 
@@ -198,6 +200,7 @@ if debug:                                                                      #
     print pa + "\tContours converted, we have %i contour(s)."\
            %(len(flattened_contours))
 													                                                        #contours shorter than "threshold" are discarded.
+flattened_contours = nh.thresholdContours(flattened_contours,3)                #filter out contours smaller than 3 in case there are any left
 
 if debug:                                                                      #debug output
     nh.drawContours(height,flattened_contours,image_name,dest)
@@ -222,7 +225,6 @@ Mesh Creation:
           plane spanned by one contour.
 """ 
 flattened_contours = np.asarray(flattened_contours)                            #add a bit of noise to increase stability of triangulation algorithm
-flattened_contours = nh.thresholdContours(flattened_contours,3)                #filter out contours smaller than 3 in case there are any left
 for c in flattened_contours:
     for p in c:
         p[0] = p[0] + 0.1*np.random.rand()

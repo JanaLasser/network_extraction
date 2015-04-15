@@ -28,7 +28,7 @@ from C_neat_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
 figure_format = ".png"                                                         #plot format
-figure_dpi = 2000                                                               #plot resolution
+figure_dpi = 600                                                               #plot resolution
 markersize = 3
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
@@ -622,7 +622,7 @@ def _drawGraph(G,verbose):
         typ = len(nx.neighbors(G,node[0]))
         if typ > 3:
             typ = 3
-        if typ < 3:
+        if typ < 4:
             c = colors[typ]
             plt.plot(x,y,'o',color=c,markersize=markersize,mec=c,alpha=0.8,mew=1)
         
