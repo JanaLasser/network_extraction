@@ -64,16 +64,6 @@ Optional: pruning
         of surplus branches due to noise in the contours of the network.
         Five has proven to be a reasonable number of nodes to prune away (also
         specified as default for this option).
-
-Optional: contour_threshold
-        If contour_threshold is specified, contours with a length (number of
-        points) shorter than contour_threshold will be omitted. This is useful
-        to get rid of noisy structures such as small holes in the features or
-        small islands which were not removed by previous image processing.
-        A reasonable value for contour_threshold is strongly dependent on the
-        size and delicacy of the features we want to resolve. contour_threshold
-        defaults to 3 which barely removes any contours and is feasible for
-        rather low resolution images.
         
 Optional: minimum_feature_size
         If minimum_feature_size in pixelx is specified, features with a size of
@@ -124,16 +114,17 @@ parser.add_argument('-p','--pruning', type=int, help='Number of triangles that '
 parser.add_argument('-r','--redundancy', type=int, help='Sets the desired '\
                 + 'number of redundant nodes in the output graph',\
                 default=0,choices=[0,1,2])
-#parser.add_argument('-t','--contour_threshold', type=int, \
-#                help='Lenght up to which contours are discarded', default=3)
 parser.add_argument('-s','--minimum_feature_size', type=int, \
                 help='Minimum size (pixels) up to which features will be ' + \
                 'discarded.', default = 3000)
-parser.add_argument('-i','--image_improvement',action="store_true",\
+parser.add_argument('-i','--image_improvement',type=int,\
                     help='Turns on image smoothing via binary opening and '+\
-                    'closing.', default=False)
+                    'closing. Sets kernel size of the morphology operators '+\
+                    'to argument value.', default=False)
 parser.add_argument('-pl','--plot',action="store_true",\
                     help='Turns on plotting',default=False)
+parser.add_argument('-dm', '--distance_map',action="store_true", \
+            help = "Saves the distance map.",default=False)
                 
 args = parser.parse_args()
 verbose = args.verbose                                                         #verbosity switch turns on progress output
@@ -142,10 +133,11 @@ image_source = args.source                                                     #
 dest = args.dest                                                               #full path to the folder the results will be stored in
 order = args.pruning                                                           #Order parameter for pruning: cut off triangles up to order at the ends of the graph
 redundancy = args.redundancy                                                   #parameter for the number of redundant nodes in the final graph
-contour_threshold = 5#args.contour_threshold                                     #Contours shorter than threshold are discarded.
+contour_threshold = 5                                                          #Contours shorter than threshold are discarded.
 minimum_feature_size = args.minimum_feature_size                               #features smaller than minimum_feature_size will be discarded.
 image_improvement = args.image_improvement                                     #switches smoothing via binary opening and closing on and off
 plot = args.plot                                                               #switches on visualization of the created graphs
+save_distance_map = args.distance_map
 
 pa = "Neat> "                                                                  #preamble
 
@@ -174,8 +166,9 @@ image = remove_small_objects(image.astype(bool),\
 
 distance_map = nh.cvDistanceMap(image).astype(np.int)                          #Create distance map
 height,width = distance_map.shape
-scipy.misc.toimage(distance_map, cmin=0, cmax=255)\
-          .save(join(dest,image_name + "_dm.png"))                             #save the distance map in case we need it later
+if save_distance_map:
+    scipy.misc.toimage(distance_map, cmin=0, cmax=255)\
+              .save(join(dest,image_name + "_dm.png"))                             #save the distance map in case we need it later
 
 if debug:   
     scipy.misc.imsave(join(dest,image_name + "_processed.png"),image)          #debug output   
@@ -385,7 +378,8 @@ Redundant node removal
 if redundancy == 2: 
     nh.drawAndSafe(G,image_name,dest,2,verbose,plot)                           #draw and safe graph with redundant nodes                         
 
-nh.drawGraphTriangulation(height,G,triangles,image_name,dest,distance_map)
+if debug:
+    nh.drawGraphTriangulation(height,G,triangles,image_name,dest,distance_map)
 
 if redundancy == 1 or redundancy == 2:                                                            #draw and safe graph with half redundant nodes
     G = nh.removeRedundantNodes(G,verbose,1)

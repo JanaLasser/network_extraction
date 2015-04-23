@@ -230,20 +230,26 @@ cdef class CshapeTriangle:
     #radius defaulted to zero it will return 1 (for debugging reasons)
     cpdef get_center(self): return self.center
     cpdef set_center(self,np.ndarray[DTYPE_t,ndim=2] distance_map):
+        cdef int return_val = 0
         if self.typ == None:
             print "tried to set center of None-type triangle, nothing happened"
-            return 0
         elif self.typ == "junction":
-            return self.set_center_junction(distance_map)
+            return_val = self.set_center_junction(distance_map)
         elif self.typ == "normal":
-            return self.set_center_normal(distance_map)
+            return_val = self.set_center_normal(distance_map)
         elif self.typ == "end":
-            return self.set_center_end(distance_map)
+            return_val = self.set_center_end(distance_map)
         elif self.typ == "isolated":
-            return 0
+            pass
         else:
             print "unknown triangle type!"
-        return 0
+        
+        if type(self.center) == type(None):
+            self.center = Cpoint(\
+                        round((self.p1.x+self.p2.x+self.p3.x)*(1.0/3.0)),\
+                        round((self.p1.y+self.p2.y+self.p3.y)*(1.0/3.0)))
+                        
+        return return_val
         
     cpdef get_radius(self): return self.radius
 
@@ -266,9 +272,11 @@ cdef class CshapeTriangle:
         if self.edge1.triangle1 == self:
             self.neighbor_list[0] = self.edge1.triangle2           
         else: self.neighbor_list[0] = self.edge1.triangle1
+        
         if self.edge2.triangle1 == self:
             self.neighbor_list[1] = self.edge2.triangle2           
         else: self.neighbor_list[1] = self.edge2.triangle1
+        
         if self.edge3.triangle1 == self:
             self.neighbor_list[2] = self.edge3.triangle2           
         else: self.neighbor_list[2] = self.edge3.triangle1
@@ -696,12 +704,14 @@ def update_neighbor_pointers(CshapeTriangle end):
         if neighbor.get_neighbor(j) == end:
             neighbor.set_neighbor(j,None)
             break
+    neighbor.set_type()
     return neighbor
 
 
 #Helper function to traverse along a part of the network given the previous
 #and the current triangle. Will return the next triangle along the edge
 def traverse_triangles(CshapeTriangle prev, CshapeTriangle curr):
+    cdef CshapeTriangle n1, n2, n3, neighbor1, neighbor2, nextTriangle
     if curr.get_type() != "normal":
         print "tried to traverse from non-normal triangle, aborting!"
         return
@@ -717,10 +727,16 @@ def traverse_triangles(CshapeTriangle prev, CshapeTriangle curr):
     else:
         neighbor1 = n2
         neighbor2 = n3
+        
     if neighbor1 == prev:
-        return neighbor2
+        nextTriangle = neighbor2
     else:
-        return neighbor1
+        nextTriangle = neighbor1
+    
+    if nextTriangle == None:
+        print curr.neighbor_list
+        
+    return nextTriangle
     
 
 #Helper function to confirm if an end-triangle is part of a surplus branch.
@@ -739,7 +755,7 @@ def confirm_surplus_branch(CshapeTriangle end,int order):
     
     j = 0
     while j < order:
-        if curr.get_type() == "junction":
+        if curr.get_type() == "junction" or curr.get_type() == "end":
             return True
         temp = traverse_triangles(prev,curr)
         prev = curr
@@ -761,6 +777,9 @@ def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
     cdef CshapeTriangle t,neighbor
 
     curr_order = 0
+    for t in triangles:
+        t.set_type()
+    
     while curr_order < order:
         indices = []
         if verbose:
@@ -777,11 +796,21 @@ def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
                     update_edge_pointers(t,neighbor)
 
         indices = list(set(indices).symmetric_difference(set\
-                 (range(len(triangles)))))
-                 
+                 (range(len(triangles)))))                
         triangles = triangles[indices]
+        
         for t in triangles:
             t.set_type()
         curr_order += 1
-
+    
+    #make sure no isolated triangles make it into the final triangle list    
+    indices = []
+    for i,t in enumerate(triangles):
+        if t.get_type() == "isolated":
+            indices.append(i)
+            
+    indices = list(set(indices).symmetric_difference(set\
+             (range(len(triangles)))))                
+    triangles = triangles[indices]
+    
     return triangles

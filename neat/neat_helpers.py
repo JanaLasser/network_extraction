@@ -28,8 +28,8 @@ from C_neat_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
 figure_format = ".png"                                                         #plot format
-figure_dpi = 600                                                               #plot resolution
-markersize = 3
+figure_dpi = 200                                                               #plot resolution
+markersize = 0.2
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
 #functions used in the vectorize.py script
@@ -614,18 +614,18 @@ def _drawGraph(G,verbose):
 
     nx.draw_networkx_edges(G, pos=pos, width=widths,edgecolor='DarkSlateGray',
                            alpha=0.4)
+
+    #TODO: find out why degrees can be > 3!    
+    color_dict = {3:"orange",2:"purple",1:"red",4:"blue",5:"blue",6:"blue"}
+    colors = []
+    for node in G.nodes():
+        degree = nx.degree(G,node)
+        if degree > 3:
+            degree = 3
+        colors.append(color_dict[degree])
     
-    colors = {3:"orange",2:"purple",1:"red"}
-    for node in G.nodes(data=True):
-        x = node[1]['x']*scale
-        y = node[1]['y']*scale
-        typ = len(nx.neighbors(G,node[0]))
-        if typ > 3:
-            typ = 3
-        if typ < 4:
-            c = colors[typ]
-            plt.plot(x,y,'o',color=c,markersize=markersize,mec=c,alpha=0.8,mew=1)
-        
+    nx.draw_networkx_nodes(G, pos=pos,alpha=0.8,node_size= markersize,\
+        node_color=colors,linewidths=0.1)            
     
     if verbose:
         print "\t from _drawGraph: drawing took %1.2f sec"%(time.clock()-start)
