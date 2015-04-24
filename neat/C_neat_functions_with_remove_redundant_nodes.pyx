@@ -196,6 +196,7 @@ cdef class CshapeTriangle:
     cdef double radius
     cdef int index
     cdef list neighbor_list 
+    cdef dict distance_dict
    
     #Constructor creates a triangle from three segments, sets the three points
     #of the triangle and the segment's pointer to the newly created triangle
@@ -203,7 +204,8 @@ cdef class CshapeTriangle:
         #type cannot be determined at creation and has to be set at a later
         #point via the set_type function as is the neighbor_list
         self.typ = None   
-        self.neighbor_list = []                
+        self.neighbor_list = []    
+        self.distance_dict = {}              
         self.edge1 = edge1
         self.edge2 = edge2
         self.edge3 = edge3     
@@ -313,6 +315,22 @@ cdef class CshapeTriangle:
     cpdef remove_neighbor(self, CshapeTriangle n):
         self.neighbor_list.remove(n)
         
+    cpdef set_distances(self):
+        cdef CshapeTriangle n
+        cdef float d
+        for n in self.neighbor_list:
+            d = distance(self.get_center(),n.get_center())
+            self.distance_dict.update({n.get_index():d})
+            n.distance_dict.update({self.index:d})
+            
+    cpdef get_distances(self): return self.distance_dict
+    
+    cpdef get_distance(self,key): return self.distance_dict[key]
+    
+    cpdef remove_distance(self,key): self.distance_dict.pop(key)
+    
+    cpdef update_distances(self,entry):
+        self.distance_dict.update(entry)
     
     #helper function which recieves two triangles as input and returns the
     #shared edge if they are neighbors or "None" if they are not.
@@ -726,6 +744,8 @@ def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
                         print "end trinalge with too many neighbors detected!"
                     neighbor = t.get_neighbor(0)
                     update_edge_pointers(t,neighbor)
+                    #update_neighbor_pointers(t,neighbor)
+                    #neighbor.init_triangle_mesh()
 
         indices = list(set(indices).symmetric_difference(set\
                  (range(len(triangles)))))                
@@ -746,15 +766,98 @@ def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
     triangles = triangles[indices]
     return triangles
 
+
+def CremoveRedundantNodes(np.ndarray triangles, bint verbose, int mode):
+    cdef int order = len(triangles)
+    cdef int new_order = 0
+    cdef int i = 0
+    cdef int j
+    cdef list indices
+    cdef dict redundant_triangles
+    cdef CshapeTriangle t, n1, n2
+    cdef float d_n1, d_n2
+    cdef dict distances
+    
+    #calculate all distances between the initial neighbors if not yet done
+    for t in triangles:
+        if len(t.get_distances()) == 0:
+            t.set_distances()
+    
+    while(True):
+        if verbose:
+            print "\t from removeRedundantNodes: collapsing iteration ",i
+        if mode == 0:
+            if new_order == order: break
+        if mode == 1: 
+            if i > 2: break
+        if mode == 2: break
+    
+        indices = []
+        redundant_triangles = {}
+        for j,t in enumerate(triangles):
+            if len(t.neighbor_list) == 2:
+                distances = t.get_distances()
+                n1 = t.get_neighbor(0)
+                n2 = t.get_neighbor(1)
+                d_n1 = distances[n1.get_index()]
+                d_n2 = distances[n2.get_index()]
+                n1.add_neighbor(n2)
+                n2.add_neighbor(n1)
+                n1.update_distances({n2.get_index():d_n1 + d_n2})
+                n2.update_distances({n1.get_index():d_n1 + d_n2})
+                indices.append(j)
+                if n1.get_index() not in redundant_triangles and \
+                   n2.get_index() not in redundant_triangles:
+                       redundant_triangles.update({t.get_index():t})
+         
+        for t in redundant_triangles.values():
+            n1 = t.get_neighbor(0)
+            n2 = t.get_neighbor(1)
+            #TODO: figure out why these checks are necessary
+            if t in n1.neighbor_list:
+                try:
+                    n1.neighbor_list.remove(t)
+                except ValueError:
+                    print "not able to remove triangle ",t.get_index()
+    
+            if n1 in t.neighbor_list:
+                try:
+                    t.neighbor_list.remove(n1)
+                except ValueError:
+                    print "not able to remove triangle ",n1.get_index()
+                
+            if t in n2.neighbor_list:
+                try:
+                    n2.neighbor_list.remove(t)
+                except ValueError:
+                    print "not able to remove triangle ",t.get_index()
+                
+            if n2 in t.neighbor_list:
+                try:
+                    t.neighbor_list.remove(n2)
+                except ValueError:
+                    print "not able to remove triangle ",n2.get_index()
+        
+        indices = list(set(indices).symmetric_difference(set\
+                 (range(len(triangles)))))                
+        triangles = triangles[indices]
+        
+        order = new_order
+        new_order = len(triangles) 
+        i+=1
+        
+        return triangles
+
 #Create the adjacency matrix of the graph from the list of triangles.
 #First we give each triangle an index according to its position in the list.
 #If we find that a triangle with index i neighbors another triangle with index
 #j, we create an entry in the adjacency matrix at position (i,j). The value
 #of the entry is the distance between the centers of the two triangles.
 def CcreateTriangleAdjacencyMatrix(list triangles not None):
-    cdef int dim, j, i, index
+    cdef int dim, j, i, index, old_index, k
     cdef float dist
-    cdef CshapeTriangle n,t
+    cdef CshapeTriangle neighbor,t, n
+    cdef str mode = "old"
      
     #initialize the adjacency matrix and triangle indices        
     dim = len(triangles)
@@ -762,17 +865,62 @@ def CcreateTriangleAdjacencyMatrix(list triangles not None):
     adjacency_matrix.setdiag(np.zeros((dim,1)))    
     
     #iterate over all triangles and create entries in the adjacency matrix
-    for i in range(dim):
-        triangles[i].set_index(i)
-        
-    for j in range(dim):
-        t = triangles[j]
-        
-        for n in t.neighbor_list:
-            dist = distance(t.get_center(),n.get_center())                
-            index = n.get_index()
-            adjacency_matrix[j,index] = dist
+    #based on wheter the current triangle is junction, normal or end
+    if mode == "old":
+        for i in range(dim):
+            triangles[i].set_index(i)
             
-    return adjacency_matrix
-                    
+        for j in range(dim):
+            t = triangles[j]
+            
+            for n in t.neighbor_list:
+                dist = distance(t.get_center(),n.get_center())                
+                index = n.get_index()
+                adjacency_matrix[j,index] = dist
+                        
     
+    else:
+        print "dimension of adjacency matrix: ",dim
+        #update indices
+        for i in range(dim):
+            t = triangles[i]
+            old_index = t.get_index()
+            dist = 0
+            for n in t.neighbor_list:
+                try:
+                    dist = n.get_distance(old_index)
+                except KeyError:
+                    try:
+                        dist = t.get_distance(n.get_index())
+                    except KeyError:
+                        print "missing distance entry!"
+                    
+                n.update_distances({i:dist})
+                try:
+                    n.remove_distance(old_index)
+                except KeyError:
+                    pass
+                
+            t.set_index(i)
+            
+        for j in range(dim):
+            t = triangles[j]
+            
+            for n in t.neighbor_list:
+                index = n.get_index()
+                if index > dim - 1:
+                    print "pointer from %d to deleted triangle %d detected!"\
+                        %(j, index)
+                else:   
+                    dist = 0
+                    try:
+                        dist = t.get_distance(index)
+                    except KeyError:
+                        try:
+                            dist = n.get_distance(t.get_index())
+                        except KeyError:
+                            print "missing distance entry!"
+                            
+                    adjacency_matrix[j,index] = dist
+    
+    return adjacency_matrix           

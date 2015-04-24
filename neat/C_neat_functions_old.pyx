@@ -203,7 +203,7 @@ cdef class CshapeTriangle:
         #type cannot be determined at creation and has to be set at a later
         #point via the set_type function as is the neighbor_list
         self.typ = None   
-        self.neighbor_list = []                
+        self.neighbor_list = [None, None, None]                  
         self.edge1 = edge1
         self.edge2 = edge2
         self.edge3 = edge3     
@@ -267,52 +267,53 @@ cdef class CshapeTriangle:
     #getter and setter for the triangle's type. The type is determined based
     #on how many neighbors the triangle has
     cpdef get_type(self): return self.typ 
-
-    cpdef init_triangle_mesh(self):
-        self.set_neighbors()
-        self.set_type()
-    
-    cpdef set_neighbors(self):
-        self.neighbor_list = []
-        #set the triangels neighbors based on the pointers stored in the edges
-        #check for neighbors at edge1
-        if self.edge1.triangle1 == self and self.edge1.triangle2 != None:
-            self.add_neighbor(self.edge1.triangle2) 
-        elif self.edge1.triangle2 == self and self.edge1.triangle1 != None:  
-            self.add_neighbor(self.edge1.triangle1) 
-        
-        #check for neighbors at edge2
-        if self.edge2.triangle1 == self and self.edge2.triangle2 != None:
-            self.add_neighbor(self.edge2.triangle2) 
-        elif self.edge2.triangle2 == self and self.edge2.triangle1 != None:  
-            self.add_neighbor(self.edge2.triangle1) 
-         
-        #check for neighbors at edge3
-        if self.edge3.triangle1 == self and self.edge3.triangle2 != None:
-            self.add_neighbor(self.edge3.triangle2) 
-        elif self.edge3.triangle2 == self and self.edge3.triangle1 != None:  
-            self.add_neighbor(self.edge3.triangle1) 
-        
     cpdef set_type(self):
         cdef int neighbors = 0 
-        cdef dict type_dict = {0:"isolated", 1:"end", 2:"normal", 3:"junction"}   
-        neighbors = len(self.neighbor_list)
-        if neighbors > 3:
-            print "number of neighbors not in (0,1,2,3)... really weird!"
+        #set the triangels neighbors based on the pointers stored in the edges
+        if self.edge1.triangle1 == self:
+            self.neighbor_list[0] = self.edge1.triangle2           
+        else: self.neighbor_list[0] = self.edge1.triangle1
+        
+        if self.edge2.triangle1 == self:
+            self.neighbor_list[1] = self.edge2.triangle2           
+        else: self.neighbor_list[1] = self.edge2.triangle1
+        
+        if self.edge3.triangle1 == self:
+            self.neighbor_list[2] = self.edge3.triangle2           
+        else: self.neighbor_list[2] = self.edge3.triangle1
+  
+        #count the number of non-None neighbors      
+        if self.neighbor_list[0] != None:
+            neighbors += 1
+        if self.neighbor_list[1] != None:
+            neighbors += 1
+        if self.neighbor_list[2] != None:
+            neighbors += 1
+            
+        #junction triangle if we have 3 neighbors
+        if neighbors == 3:
+            self.typ = "junction"  
+                                   
+        #normal triangle if we have two neighbors
+        elif neighbors == 2:
+            self.typ = "normal"        
+          
+        #end triangle if we have one neighbor
+        elif neighbors == 1:
+            self.typ = "end"
+                    
+        #isolated triangle if we have zero neighbors
+        elif neighbors == 0:
+            self.typ = "isolated"
+            
+        #something really weird happened...
         else:
-            self.typ = type_dict[neighbors]            
+            print "number of neighbors not in (0,1,2,3)... really weird!"
         
     #getter and setter for the triangle's neighbors        
-    cpdef get_neighbor(self,int index):
-        return self.neighbor_list[index]
+    cpdef get_neighbor(self,int index): return self.neighbor_list[index]
     cpdef set_neighbor(self,int index,CshapeTriangle n):
         self.neighbor_list[index] = n 
-    cpdef add_neighbor(self, CshapeTriangle n):
-        if n not in self.neighbor_list:
-            self.neighbor_list.append(n)
-    cpdef remove_neighbor(self, CshapeTriangle n):
-        self.neighbor_list.remove(n)
-        
     
     #helper function which recieves two triangles as input and returns the
     #shared edge if they are neighbors or "None" if they are not.
@@ -625,42 +626,110 @@ def CbuildTriangles(list points, list triangle_point_indices):
         triangles.append(new_triangle)
     return triangles
 
+#Create the adjacency matrix of the graph from the list of triangles.
+#First we give each triangle an index according to its position in the list.
+#If we find that a triangle with index i neighbors another triangle with index
+#j, we create an entry in the adjacency matrix at position (i,j). The value
+#of the entry is the distance between the centers of the two triangles.
+def CcreateTriangleAdjacencyMatrix(list triangles not None):
+    cdef int dim, j, i, index
+    cdef float dist
+    cdef CshapeTriangle neighbor,t
+    cdef float dist1, dist2, dist3
+     
+    #initialize the adjacency matrix and triangle indices        
+    dim = len(triangles)
+    adjacency_matrix = lil_matrix((dim,dim))
+    adjacency_matrix.setdiag(np.zeros((dim,1)))    
+    for i in range(dim):
+        triangles[i].set_index(i)
+    
+    #iterate over all triangles and create entries in the adjacency matrix
+    #based on wheter the current triangle is junction, normal or end
+    for j in range(dim):
+        t = triangles[j]
+        
+        if t.get_type() == "junction":
+            for k in range(3):
+                neighbor = t.get_neighbor(k)
+                dist = distance(t.get_center(),neighbor.get_center())                
+                index = neighbor.get_index()
+                adjacency_matrix[j,index] = dist
+                    
+        elif t.get_type() == "normal":
+            for k in range(3):
+                neighbor = t.get_neighbor(k)
+                if neighbor != None:                   
+                    dist = distance(t.get_center(),neighbor.get_center())                 
+                    index = neighbor.get_index() 
+                    adjacency_matrix[j,index] = dist
+
+        elif t.get_type() == "end":
+            for k in range(3):
+                neighbor = t.get_neighbor(k)
+                if neighbor != None:                
+                    dist = distance(t.get_center(),neighbor.get_center())             
+                    index = neighbor.get_index()
+                    adjacency_matrix[j,index] = dist                   
+        else:
+            print "triangle without type detected... aborting!"
+    
+    return adjacency_matrix
 
 #Helper function to update the pointers to the triangles stored in edges when
 #a triangle is deleted during the pruning process    
-def update_edge_pointers(CshapeTriangle end, CshapeTriangle neighbor):
-    cdef Csegment edge = end.get_connecting_edge(neighbor)
-    if edge.get_triangle1() == end:
+def update_edge_pointers(CshapeTriangle t, CshapeTriangle n):
+    cdef Csegment edge = t.get_connecting_edge(n)
+    if edge.get_triangle1() == t:
         edge.set_triangle1(None)
-    elif edge.get_triangle2() == end:
+    elif edge.get_triangle2() == t:
         edge.set_triangle2(None) 
     else:
         #TODO: figure out why this can happen!
         print "edge relations wrong!"
-    neighbor.set_neighbors()
-    end.set_neighbors()
-    end.set_type()
-    neighbor.set_type()
 
 #Helper function to update the pointers to the neighboring triangles stored
 #in the triangle itself when a triangle is deleted during the pruning process        
-#def update_neighbor_pointers(CshapeTriangle end, CshapeTriangle neighbor):    
-#    #disconnect the end from the neighbor
-#    end.remove_neighbor(neighbor)
-#    neighbor.remove_neighbor(end)
+def update_neighbor_pointers(CshapeTriangle end):
+    cdef CshapeTriangle neighbor = None
+    cdef int i = 0
     
+    #find the neighbor and disconnect the end from the neighbor
+    for i in range(3):
+        if end.get_neighbor(i) != None:
+            neighbor = end.get_neighbor(i)
+            end.set_neighbor(i,None)
+            break
+
+    #disconnect the neighbor from the end
+    for j in range(3):
+        if neighbor.get_neighbor(j) == end:
+            neighbor.set_neighbor(j,None)
+            break
+    neighbor.set_type()
+    return neighbor
 
 
 #Helper function to traverse along a part of the network given the previous
 #and the current triangle. Will return the next triangle along the edge
 def traverse_triangles(CshapeTriangle prev, CshapeTriangle curr):
-    cdef CshapeTriangle neighbor1, neighbor2, nextTriangle
+    cdef CshapeTriangle n1, n2, n3, neighbor1, neighbor2, nextTriangle
     if curr.get_type() != "normal":
         print "tried to traverse from non-normal triangle, aborting!"
         return
-    neighbor1 = curr.get_neighbor(0)
-    neighbor2 = curr.get_neighbor(1)
- 
+    n1 = curr.get_neighbor(0)
+    n2 = curr.get_neighbor(1)
+    n3 = curr.get_neighbor(2)
+    if n1 != None:
+        neighbor1 = n1
+        if n2 != None:
+            neighbor2 = n2
+        else: 
+            neighbor2 = n3
+    else:
+        neighbor1 = n2
+        neighbor2 = n3
+        
     if neighbor1 == prev:
         nextTriangle = neighbor2
     else:
@@ -679,11 +748,14 @@ def traverse_triangles(CshapeTriangle prev, CshapeTriangle curr):
 #Makes use of the "traverse_triangles" function to search downstream from the
 #end triangle.
 def confirm_surplus_branch(CshapeTriangle end,int order):
-    cdef CshapeTriangle curr = end.get_neighbor(0)
-    cdef CshapeTriangle prev = end
-    cdef CshapeTriangle temp
-    cdef int j = 0
-
+    i = 0
+    curr = None
+    prev = end
+    while curr == None:
+        curr = end.get_neighbor(i)
+        i += 1
+    
+    j = 0
     while j < order:
         if curr.get_type() == "junction" or curr.get_type() == "end":
             return True
@@ -708,7 +780,7 @@ def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
 
     curr_order = 0
     for t in triangles:
-        t.init_triangle_mesh()
+        t.set_type()
     
     while curr_order < order:
         indices = []
@@ -720,11 +792,9 @@ def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
             if t.get_type() == "end":
                 #confirm that the end we are dealing with really is part of a
                 # end + N*normal + junction structure and not a real tip 
-                if confirm_surplus_branch(t,order):
+                if confirm_surplus_branch(t,order):           
                     indices.append(i)
-                    if len(t.neighbor_list) > 1:
-                        print "end trinalge with too many neighbors detected!"
-                    neighbor = t.get_neighbor(0)
+                    neighbor = update_neighbor_pointers(t)
                     update_edge_pointers(t,neighbor)
 
         indices = list(set(indices).symmetric_difference(set\
@@ -732,7 +802,7 @@ def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
         triangles = triangles[indices]
         
         for t in triangles:
-            t.init_triangle_mesh()
+            t.set_type()
         curr_order += 1
     
     #make sure no isolated triangles make it into the final triangle list    
@@ -744,35 +814,63 @@ def CbruteforcePruning(np.ndarray triangles,int order,bint verbose):
     indices = list(set(indices).symmetric_difference(set\
              (range(len(triangles)))))                
     triangles = triangles[indices]
+    
     return triangles
-
-#Create the adjacency matrix of the graph from the list of triangles.
-#First we give each triangle an index according to its position in the list.
-#If we find that a triangle with index i neighbors another triangle with index
-#j, we create an entry in the adjacency matrix at position (i,j). The value
-#of the entry is the distance between the centers of the two triangles.
-def CcreateTriangleAdjacencyMatrix(list triangles not None):
-    cdef int dim, j, i, index
-    cdef float dist
-    cdef CshapeTriangle n,t
-     
-    #initialize the adjacency matrix and triangle indices        
-    dim = len(triangles)
-    adjacency_matrix = lil_matrix((dim,dim))
-    adjacency_matrix.setdiag(np.zeros((dim,1)))    
     
-    #iterate over all triangles and create entries in the adjacency matrix
-    for i in range(dim):
-        triangles[i].set_index(i)
-        
-    for j in range(dim):
-        t = triangles[j]
-        
-        for n in t.neighbor_list:
-            dist = distance(t.get_center(),n.get_center())                
-            index = n.get_index()
-            adjacency_matrix[j,index] = dist
-            
-    return adjacency_matrix
-                    
+def CremoveRedundantNodes(G,bint verbose,int mode):
+    cdef int order = G.order()
+    cdef int new_order = 0    
+    cdef int i = 0 
+    cdef int node, n1, n2
+    cdef list nodelist, neighbors
+    cdef float start, end, w1, w2, c1, c2, length, radius
     
+    while(True):
+        if mode == 1:
+            if i > 2:              
+                break
+        if mode == 0:
+            if new_order == order:break
+        if mode == 2:
+            break
+        
+        nodelist = []
+        start = time.clock()
+        for node in G.nodes():
+            neighbors = G.neighbors(node)
+            if(len(neighbors)==2):
+                n1 = neighbors[0]
+                n2 = neighbors[1]
+                w1 = G.edge[node][n1]['weight']
+                w2 = G.edge[node][n2]['weight']
+                length = float(w1) + float(w2)
+                c1 = G.edge[node][n1]['conductivity']
+                c2 = G.edge[node][n2]['conductivity']
+                #TODO: figure out why length can be zero
+                if length == 0: radius = 1
+                else: radius = (c1*w1+c2*w2)/length
+                G.add_edge(n1,n2, weight = length, conductivity = radius )
+                if n1 not in nodelist and n2 not in nodelist:
+                    nodelist.append(node)
+        end = time.clock()
+        print "duraction of collapsing iteration: ",end-start
+        
+        #sometimes when the graph does not contain any branches (e.g. one
+        #single line) the redundant node removal ends up with a triangle at
+        #the end, god knows why. This is a dirty hack to remove one of the 
+        #three final nodes so a straight line is left which represents the 
+        #correct topology but maybe not entirely correct coordinates.        
+        if len(nodelist) == len(G.nodes())-1:
+            G.remove_node(nodelist[1])
+        else:
+            for node in nodelist:
+                G.remove_node(node)
+        
+        order = new_order
+        new_order = G.order() 
+        if verbose:
+            print "\t from removeRedundantNodes: collapsing iteration ",i
+        i+=1
+        if order == new_order:
+            break
+    return G

@@ -283,7 +283,7 @@ isolated_indices = []
 default_triangles = 0
 for i in range(len(triangles)):                                                
     t = triangles[i]                                                           #set the triangle's type
-    t.set_type()    
+    t.init_triangle_mesh()    
     if t.get_type() == "junction":                                             #count the number of each triangle type for debugging
         junction += 1
     elif t.get_type() == "normal":
@@ -334,6 +334,7 @@ normal = 0
 end = 0
 isolated = 0
 for t in triangles:
+    t.init_triangle_mesh()
     default_triangles += t.set_center(distance_map)
     if t.get_type() == "junction":                                             #count the number of each triangle type for debugging
         junction += 1
@@ -351,6 +352,7 @@ if debug:
                 %(junction,normal,end,len(isolated_indices))
 
 adjacency_matrix = nh.createTriangleAdjacencyMatrix(triangles)
+
 
 if verbose:
     step = time.clock()                                                        #progress output

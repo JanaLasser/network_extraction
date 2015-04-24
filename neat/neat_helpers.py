@@ -466,7 +466,8 @@ def createGraph(adjacency_matrix,all_triangles,height):
     nx.set_node_attributes(G,'y',attr)
     
     return nx.connected_component_subgraphs(G)[0]
-    
+
+
 def removeRedundantNodes(G,verbose,mode):
     '''
         Removes a specified number of redundant nodes from the graph. Nodes
@@ -499,10 +500,11 @@ def removeRedundantNodes(G,verbose,mode):
         if mode == 2:
             break
         
-        nodelist = []
+        nodelist = {}
+        start = time.clock()
         for node in G.nodes():
-            if(G.degree(node)==2):
-                neighbors = G.neighbors(node)
+            neighbors = G.neighbors(node)
+            if(len(neighbors)==2):
                 n1 = neighbors[0]
                 n2 = neighbors[1]
                 w1 = G.edge[node][n1]['weight']
@@ -510,10 +512,14 @@ def removeRedundantNodes(G,verbose,mode):
                 length = float(w1) + float(w2)
                 c1 = G.edge[node][n1]['conductivity']
                 c2 = G.edge[node][n2]['conductivity']
-                radius = (c1*w1+c2*w2)/length
+                #TODO: figure out why length can be zero
+                if length == 0: radius = 1
+                else: radius = (c1*w1+c2*w2)/length
                 G.add_edge(n1,n2, weight = length, conductivity = radius )
                 if n1 not in nodelist and n2 not in nodelist:
-                    nodelist.append(node)
+                    nodelist.update({node:node})
+        end = time.clock()
+        print "duraction of collapsing iteration: ",end-start
         
         #sometimes when the graph does not contain any branches (e.g. one
         #single line) the redundant node removal ends up with a triangle at
@@ -523,7 +529,7 @@ def removeRedundantNodes(G,verbose,mode):
         if len(nodelist) == len(G.nodes())-1:
             G.remove_node(nodelist[1])
         else:
-            for node in nodelist:
+            for node in nodelist.keys():
                 G.remove_node(node)
         
         order = new_order
@@ -534,6 +540,7 @@ def removeRedundantNodes(G,verbose,mode):
         if order == new_order:
             break
     return G
+
 
 def drawGraphTriangulation(h,G,triangles,image_name,dest,distance_map):
     def m(h,y):
