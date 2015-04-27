@@ -667,6 +667,7 @@ def traverse_triangles(CshapeTriangle prev, CshapeTriangle curr):
         nextTriangle = neighbor1
     
     if nextTriangle == None:
+        print "neighborhood relations during traverse triangle botched!"
         print curr.neighbor_list
         
     return nextTriangle
@@ -687,10 +688,13 @@ def confirm_surplus_branch(CshapeTriangle end,int order):
     while j < order:
         if curr.get_type() == "junction" or curr.get_type() == "end":
             return True
-        temp = traverse_triangles(prev,curr)
-        prev = curr
-        curr = temp
-        j += 1
+        elif curr.get_type() == "normal":
+            temp = traverse_triangles(prev,curr)
+            prev = curr
+            curr = temp
+            j += 1
+        else:
+            return False
     return False
     
     

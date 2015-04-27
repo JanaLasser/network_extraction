@@ -51,8 +51,6 @@ def getImage(image_path):
     
     image = Image.open(image_path)
     image = image.convert('L')
-    w,h = image.size
-    image.resize((w*2,h*2),resample=Image.BICUBIC )
     image = np.asarray(image,dtype=np.uint8)
     return image
 
@@ -405,6 +403,8 @@ def cvDistanceMap(image):
     cv.DistTransform(image,dst,distance_type=cv.CV_DIST_L2,\
                      mask_size=cv.CV_DIST_MASK_PRECISE)
     dst = np.asarray(dst)
+    #dst = cv2.distanceTransform(image,distanceType=cv.CV_DIST_L2,\
+    #    maskSize= cv.CV_DIST_MASK_PRECISE)
     return dst
 
 def createGraph(adjacency_matrix,all_triangles,height):
@@ -501,7 +501,6 @@ def removeRedundantNodes(G,verbose,mode):
             break
         
         nodelist = {}
-        start = time.clock()
         for node in G.nodes():
             neighbors = G.neighbors(node)
             if(len(neighbors)==2):
@@ -518,8 +517,6 @@ def removeRedundantNodes(G,verbose,mode):
                 G.add_edge(n1,n2, weight = length, conductivity = radius )
                 if n1 not in nodelist and n2 not in nodelist:
                     nodelist.update({node:node})
-        end = time.clock()
-        print "duraction of collapsing iteration: ",end-start
         
         #sometimes when the graph does not contain any branches (e.g. one
         #single line) the redundant node removal ends up with a triangle at
