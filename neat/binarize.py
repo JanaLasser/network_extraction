@@ -10,7 +10,7 @@ from skimage.morphology import disk,closing, remove_small_objects,opening
 from skimage.filter import rank
 import numpy as np
 import scipy.misc
-import vectorize_helpers as vh
+import neat_helpers as nh
 import argparse
 import ntpath
 
@@ -35,8 +35,8 @@ if dest == None:
     dest = image_source.split(image_name + '.' + ending )[0]
 
 #load the image
-image = vh.getImage(image_source)
-image = vh.RGBtoGray(image)
+image = nh.getImage(image_source)
+image = nh.RGBtoGray(image)
 image = image.astype(np.uint8)
 					
 #blur image to get rid of most of the noise
@@ -52,7 +52,7 @@ image_eq = rank.equalize(image, selem=selem)
 image = 0.5*image_eq + 0.5*image
 
 #find a favorable threshold using otsu thresholding and modify it by t_mod
-threshold = vh.otsuThreshold(image)-t_mod
+threshold = nh.otsuThreshold(image)-t_mod
 
 #threshold and save image
 image = np.where(image > threshold,1.0,0.0)
