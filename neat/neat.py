@@ -38,6 +38,8 @@ import neat_helpers as nh
 
 """
 Argument handling:
+------------------
+
 Required: source
         The program will load the image specified in "source".
         The image needs to be an 8-bit image.
@@ -45,11 +47,11 @@ Required: source
         convert it to grayscale and then perform basic thresholding to create
         a binary image.
         
-Optional: destination
-        The program will save all results in "destination" if it is specified.
-        Otherwise results will get saved at destination of the source image.
+Optional: destination -dest
+        The script will save all results in "destination" if it is specified.
+        Otherwise results are saved at the destination of the source image.
         
-Optional: redundancy
+Optional: redundancy -r
         When redundancy = 0 is specified, a graph-object with no redundant
         nodes (i.e. nodes with degree 2) will be safed.
         When redundancy = 1 is specified, a graph-object with half the 
@@ -58,86 +60,143 @@ Optional: redundancy
         nodes as well as one with half the redundant nodes and one with no 
         redundant nodes will be safed.
         
-Optional: pruning
-        If pruning is specified, a number of nodes equal to pruning will be
-        removed at the edges of the graph. This is done to reduce the number
-        of surplus branches due to noise in the contours of the network.
-        Five has proven to be a reasonable number of nodes to prune away (also
-        specified as default for this option).
+Optional: pruning -p
+        If pruning is specified, branches shorter than the threshold specified
+        with pruning will be removed from the network. This is done to reduce
+        the number of surplus branches due to noisy contours of the network.
+        Defaults to 5 which has proven to be a reasonable number of nodes 
+        to prune away.
         
-Optional: minimum_feature_size
-        If minimum_feature_size in pixelx is specified, features with a size of
+Optional: minimum_feature_size -s
+        If minimum_feature_size in pixels is specified, features with a size of
         up to minimum_feature_size will be removed from the binary image
         previous to processing. This serves to a) reduce the number of contours
         which will be processed and not needed in the end and b) helps the
         triangulation algorithm to not get confused when there are islands
         within holes.
+        Defaults to 3000 pixels.
 
-Optional: verbose
+Optional: image_improvement -i
+        If image_improvement is enabled, the binary image will be smoothed
+        using binary opening and closing operations. The kernel size of said
+        operations can be controlled by passing an integer along with the
+        image_improvement option. The right kernel size is highly dependant on
+        the resolution of the image. As a rule of thumb choose a kernel size
+        below the width of the smallest feature in the image (in pixels).
+        Defaults to 3 pixels.
+
+Optional: verbose -v
         When specified turns on verbose behaviour. The program will then print
         its current processing step as well as the time it needed for the last
         step. For some steps (usually the ones that take longer) information
         about the current state of the program is given in more detail to be 
         able to trace the program's progress. Defaults to True.
 
-Optional: debug
+Optional: debug -d
         When specified turns on additional debug output. Also saves additional
         visualizations of the processing like a plot of the contours and the
         triangulation. May consume a considerable additional amount of time
         because the additional figures take quite long to plot and save.
         Defaults to False.
         
-Optional: plot
-        When specified turns on visualization (plotting) of the created graphs.
+Optional: plot -plt
+        When specified enables visualization (plotting) of the created graphs.
         The visualization is done using matplotlib and in general gets very
         slow when dealing with large networks. As a rule of thumb it is 
         encouraged to only plot networks when they contain fewer than 10^5
         nodes. The format the plot will be saved in as well as its resolution
-        (if not saved as vector graphic) can be specified at the beginning of
-        the vectorize_helpers.py file by changing figure_format and figure_dpi.
+        (if not saved as vector graphic) can be specified using the -format
+        and -dpi commands.
         If you want to visualize really large networks, saving them as .png
-        with a high dpi (> 2000) might work.
+        with a high dpi (>2000 so features are still recognizeable) might work.
+        Per default, visualization is disabled to safe time.
+
+Optional: figure_format -format
+        Sets the output format of plots (networks or debugging plots) to the
+        desired format. Supported formats include: pdf, png, jpg, tif
+        (look at matplotlib's safefig-function for a complete list).
+        In general if the plot is needed for a report/publication, pdf is
+        recommended as they can easily be modified and beautified using a
+        vector graphics editor. Saving as pdf is relatively time-inefficient.
+        If one wants to visualize large plots, I would recommend saving them
+        as png with a high resolution (use dpi option to crank up resolution).
+        This saves time and yields acceptable results.
+        Defaults to pdf.
+
+Optional: resolution -dpi
+        Sets the resolution (dots per inch) for plots (networks or debugging
+        plots). High resolutions take longer to save and create larger image
+        files. Low resolutions sometimes make it hard to recognize smaller
+        details in the networks. 
+        Defaults to 500 dpi which is a good compromise most of the times.
+
+Optional: distance_map -dm
+        Enables saving of the euclidean distance map created during the
+        network extraction process. This is useful if the network will later
+        be loaded and manipulated using GeGUI as the GUI needs the distance
+        map to determine radii of network edges.
+        Defaults to False.
+
 """				
 
 parser = argparse.ArgumentParser(description='Vectorize: a program that ' +\
     'extracts network information from a binary image containing ribbon-like,'\
     + ' connected shapes.\nCopyright (C) 2015 Jana Lasser')
+
 parser.add_argument('source',type=str,help='Complete path to the image')
+
 parser.add_argument('-dest', type=str, help='Complete path to the folder '\
                 + 'results will be saved to if different than source folder')
+
 parser.add_argument('-v','--verbose',action="store_true",\
                 help='Turns on program verbosity', default=False)
+
 parser.add_argument('-d','--debug',action="store_true",\
                 help='Turns on debugging output',default=False)
+
 parser.add_argument('-p','--pruning', type=int, help='Number of triangles that '\
                 + 'will be pruned away at the ends of the graph', default=5)
+
 parser.add_argument('-r','--redundancy', type=int, help='Sets the desired '\
                 + 'number of redundant nodes in the output graph',\
                 default=0,choices=[0,1,2])
+
 parser.add_argument('-s','--minimum_feature_size', type=int, \
                 help='Minimum size (pixels) up to which features will be ' + \
                 'discarded.', default = 3000)
+
 parser.add_argument('-i','--image_improvement',type=int,\
                     help='Turns on image smoothing via binary opening and '+\
                     'closing. Sets kernel size of the morphology operators '+\
                     'to argument value.', default=False)
-parser.add_argument('-pl','--plot',action="store_true",\
-                    help='Turns on plotting',default=False)
+
+parser.add_argument('-plt','--plot',action='store_true',default=False,\
+                    help='Enables plotting')
+
+parser.add_argument('-format','--figure_format',type=str,\
+                    help='Specifies the file format of plots.',\
+                    default='pdf')
+
+parser.add_argument('-dpi', '--resolution', type=int, help='Sets dpi' +\
+         '(dots per inch) for plots.', default = 500)
+
 parser.add_argument('-dm', '--distance_map',action="store_true", \
             help = "Saves the distance map.",default=False)
                 
 args = parser.parse_args()
-verbose = args.verbose                                                         #verbosity switch turns on progress output
+verbose = args.verbose                                                         #verbosity switch enables printing of progress output
 debug = args.debug                                                             #debugging switch enables debugging output 
 image_source = args.source                                                     #full path to the image file
 dest = args.dest                                                               #full path to the folder the results will be stored in
-order = args.pruning                                                           #Order parameter for pruning: cut off triangles up to order at the ends of the graph
+order = args.pruning                                                           #Order parameter for pruning: remove branches shorter than specified threshold
 redundancy = args.redundancy                                                   #parameter for the number of redundant nodes in the final graph
 contour_threshold = 5                                                          #Contours shorter than threshold are discarded.
 minimum_feature_size = args.minimum_feature_size                               #features smaller than minimum_feature_size will be discarded.
-image_improvement = args.image_improvement                                     #switches smoothing via binary opening and closing on and off
-plot = args.plot                                                               #switches on visualization of the created graphs
-save_distance_map = args.distance_map
+image_improvement = args.image_improvement                                     #enables smoothing via binary opening and closing on and off
+plot = args.plot                                                               #enables visualization of extracted networks
+figure_format = args.figure_format                                             #specifies desired format to save plots
+dpi = args.resolution                                                          #specifies resolution of plots (will be ignored if figure format is pdf)               
+save_distance_map = args.distance_map                                          #enables saving of the euclidean distance map
 
 pa = "Neat> "                                                                  #preamble
 
@@ -158,8 +217,8 @@ image = np.where(image < 127,0,1)                                              #
 image = remove_small_objects(image.astype(bool),\
                                  min_size=minimum_feature_size,connectivity=1)
 if image_improvement:                                                          #standard binary image noise-removal with opening followed by closing
-    image = binary_opening(image,disk(3))                                      #maybe remove this processing step if depicted structures are really tiny
-    image = binary_closing(image,disk(3))
+    image = binary_opening(image,disk(image_improvement))                      #maybe remove this processing step if depicted structures are really tiny
+    image = binary_closing(image,disk(image_improvement))
 
 image = remove_small_objects(image.astype(bool),\
                                  min_size=minimum_feature_size,connectivity=1)
@@ -196,7 +255,8 @@ if debug:                                                                      #
 flattened_contours = nh.thresholdContours(flattened_contours,3)                #filter out contours smaller than 3 in case there are any left
 
 if debug:                                                                      #debug output
-    nh.drawContours(height,flattened_contours,image_name,dest)
+    nh.drawContours(height,flattened_contours,image_name,dest,\
+            figure_format,dpi)
 
 longest_index = 0											     #Position of longest contour.
 longest_length = 0										     #Length of longest contour.
@@ -345,7 +405,8 @@ for t in triangles:
     elif t.get_type() == "isolated":
         isolated += 1
 if debug:
-    nh.drawTriangulation(height,triangles,image_name,dest,distance_map)        #debug output
+    nh.drawTriangulation(height,triangles,image_name,dest,distance_map, \
+            figure_format,dpi)                                                 #debug output
     print pa + "\tTriangles defaulted to zero: %d"%default_triangles
     print pa + "\tTriangle types:"
     print pa + "\tjunction: %d, normal: %d, end: %d, isolated: %d"\
@@ -378,17 +439,18 @@ Redundant node removal
           graph
 """
 if redundancy == 2: 
-    nh.drawAndSafe(G,image_name,dest,2,verbose,plot)                           #draw and safe graph with redundant nodes                         
+    nh.drawAndSafe(G,image_name,dest,2,verbose,plot,figure_format,dpi)         #draw and safe graph with redundant nodes                         
 
 if debug:
-    nh.drawGraphTriangulation(height,G,triangles,image_name,dest,distance_map)
+    nh.drawGraphTriangulation(height,G,triangles,image_name,dest,\
+        distance_map,figure_format, dpi)
 
-if redundancy == 1 or redundancy == 2:                                                            #draw and safe graph with half redundant nodes
+if redundancy == 1 or redundancy == 2:                                         #draw and safe graph with half redundant nodes
     G = nh.removeRedundantNodes(G,verbose,1)
-    nh.drawAndSafe(G,image_name,dest,1,verbose,plot)
+    nh.drawAndSafe(G,image_name,dest,1,verbose,plot,figure_format,dpi)
     
 G = nh.removeRedundantNodes(G,verbose,0)                                       #draw and safe graph without redundant nodes
-nh.drawAndSafe(G,image_name,dest,0,verbose,plot)										
+nh.drawAndSafe(G,image_name,dest,0,verbose,plot,figure_format,dpi)										
 
 if verbose:
     step = time.clock()                                                        #progress output

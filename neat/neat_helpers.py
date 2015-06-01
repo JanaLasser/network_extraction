@@ -27,9 +27,8 @@ from C_neat_functions import CbuildTriangles, CbruteforcePruning
 from C_neat_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
-figure_format = ".png"                                                         #plot format
-figure_dpi = 200                                                               #plot resolution
-markersize = 0.2
+markersize = 1
+edgesize = 0.4
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
 #functions used in the vectorize.py script
@@ -539,10 +538,11 @@ def removeRedundantNodes(G,verbose,mode):
     return G
 
 
-def drawGraphTriangulation(h,G,triangles,image_name,dest,distance_map):
+def drawGraphTriangulation(h,G,triangles,image_name,dest,distance_map,\
+        figure_format,dpi):
+
     def m(h,y):
         return h - y
-
 
     plt.clf()
     ax = plt.gca()
@@ -561,8 +561,8 @@ def drawGraphTriangulation(h,G,triangles,image_name,dest,distance_map):
             
             c = colors[t.get_type()][0]
             zorder = colors[t.get_type()][1]
-            ax.plot(x,y,'o',color='black',linewidth=1.5,zorder=zorder,
-                     markersize=0.2,mew=0,alpha=1.0)
+            ax.plot(x,y,'o',color='black',linewidth=3,zorder=zorder,
+                     markersize=0.3,mew=0,alpha=1.0)
             ax.fill(x,y,facecolor=c,alpha=0.25,\
                      edgecolor=c,linewidth=0.05)
             #ax.text((x[0]+x[1]+x[2])/3.0-0.5,(y[0]+y[1]+y[2])/3.0-0.5,"%d"%i,\
@@ -587,9 +587,9 @@ def drawGraphTriangulation(h,G,triangles,image_name,dest,distance_map):
             typ = 3
         if typ < 4:
             c = colors[typ]
-            plt.plot(x,y,'+',color=c,markersize=0.1,mec=c)       
-    plt.savefig(join(dest,image_name + "_graph_and_triangulation" + ".png"),\
-                     dpi=figure_dpi)
+            plt.plot(x,y,'+',color=c,markersize=0.3,mec=c)       
+    plt.savefig(join(dest,image_name + "_graph_and_triangulation" + "." + \
+                figure_format), dpi=dpi)
     
 
   
@@ -614,7 +614,7 @@ def _drawGraph(G,verbose):
         pos[k] = (G.node[k]['x']*scale, G.node[k]['y']*scale)
     
     widths = np.array([G[e[0]][e[1]]['conductivity'] for e in G.edges()])*scale
-    widths = 15./(np.amax(widths)*2)*widths
+    widths = 15./(np.amax(widths)*2)*widths*edgesize
 
     nx.draw_networkx_edges(G, pos=pos, width=widths,edgecolor='DarkSlateGray',
                            alpha=0.4)
@@ -629,12 +629,12 @@ def _drawGraph(G,verbose):
         colors.append(color_dict[degree])
     
     nx.draw_networkx_nodes(G, pos=pos,alpha=0.8,node_size= markersize,\
-        node_color=colors,linewidths=0.1)            
+        node_color=colors,linewidths=0)            
     
     if verbose:
         print "\t from _drawGraph: drawing took %1.2f sec"%(time.clock()-start)
  
-def drawAndSafe(G,image_name,dest,redundancy,verbose,plot):
+def drawAndSafe(G,image_name,dest,redundancy,verbose,plot,figure_format,dpi):
     '''
     Draws a graph calling the helper function _drawGraph and saves it at
     destination "dest" with the name "image_name" + "_graph"
@@ -653,7 +653,7 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose,plot):
         plt.clf()
         _drawGraph(G,verbose)          
         plt.savefig(join(dest,image_name + "_graph_" + mode + \
-        figure_format),dpi=figure_dpi)
+            "." + figure_format),dpi=dpi)
     figure_save = time.clock()
     
     nx.write_gpickle(G,join(dest,image_name + "_graph_" + mode + ".gpickle"))
@@ -666,7 +666,8 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose,plot):
     plt.close()
   
 
-def drawTriangulation(h,triangles,image_name,dest,distance_map):
+def drawTriangulation(h,triangles,image_name,dest,distance_map, \
+            figure_format,dpi):
     def m(h,y):
         return y
     '''
@@ -683,7 +684,7 @@ def drawTriangulation(h,triangles,image_name,dest,distance_map):
     plt.clf()
     ax = plt.gca()
     ax.set_aspect('equal', 'datalim')
-    ax.imshow(distance_map,cmap='gray')
+    #ax.imshow(distance_map,cmap='gray')
     plt.title("Triangulation: " + image_name)
     colors = {"junction":["orange",3],"normal":["purple",1],"end":["red",2]}
     
@@ -696,18 +697,18 @@ def drawTriangulation(h,triangles,image_name,dest,distance_map):
             
             c = colors[t.get_type()][0]
             zorder = colors[t.get_type()][1]
-            ax.plot(x,y,'o',color=c,linewidth=1.5,zorder=zorder,
+            ax.plot(x,y,'o',color=c,linewidth=3,zorder=zorder,
                      markersize=0.1,mew=0,alpha=1.0)
-            ax.fill(x,y,facecolor=c,alpha=0.6,\
+            ax.fill(x,y,facecolor=c,alpha=0.45,\
                      edgecolor=c,linewidth=0.05)
             #ax.text((x[0]+x[1]+x[2])/3.0-0.5,(y[0]+y[1]+y[2])/3.0-0.5,"%d"%i,\
             #        fontsize=1)
             
-    plt.savefig(join(dest,image_name + "_triangulation" + figure_format),\
-                     dpi=figure_dpi)
+    plt.savefig(join(dest,image_name + "_triangulation" + '.pdf'),\
+                     dpi=dpi)
     plt.close()
    
-def drawContours(height,contour_list,image_name,dest): 
+def drawContours(height,contour_list,image_name,dest,figure_format,dpi): 
     from copy import deepcopy
     contour_list = deepcopy(contour_list)
     '''
@@ -732,8 +733,8 @@ def drawContours(height,contour_list,image_name,dest):
         c.append((c[0][0],c[0][1]))
         c = np.asarray(c)
         plt.plot(c[0:,0],height-c[0:,1],color="black",marker="o", \
-                 markersize=0.2,mfc="FireBrick", mew = 0.1, alpha=0.7, \
-                 linewidth = 0.1)
+                 markersize=1.5,mfc="FireBrick", mew = 0.1, alpha=0.7, \
+                 linewidth = 1)
                  
         #optional plotting of coordinates       
         if coordinates:
@@ -741,7 +742,7 @@ def drawContours(height,contour_list,image_name,dest):
                 coordinate_string = "(" + str(point[0]) + "," + str(point[1]) + ")"
                 plt.text(point[0],point[1],coordinate_string,fontsize=0.1)
                 
-    plt.savefig(join(dest,image_name + "_contours" + figure_format),\
-                dpi=figure_dpi)
+    plt.savefig(join(dest,image_name + "_contours" + '.' + figure_format),\
+                dpi=dpi)
     plt.close()
  
