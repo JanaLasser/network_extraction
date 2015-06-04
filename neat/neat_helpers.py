@@ -27,8 +27,8 @@ from C_neat_functions import CbuildTriangles, CbruteforcePruning
 from C_neat_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
-markersize = 1
-edgesize = 0.4
+markersize = 4
+edgesize = 0.6
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
 #functions used in the vectorize.py script
@@ -621,20 +621,24 @@ def _drawGraph(G,verbose):
 
     #TODO: find out why degrees can be > 3!    
     color_dict = {3:"orange",2:"purple",1:"red",4:"blue",5:"blue",6:"blue"}
+    size_dict = {3:markersize,2:0,1:markersize}
     colors = []
+    sizes = []
     for node in G.nodes():
         degree = nx.degree(G,node)
         if degree > 3:
             degree = 3
         colors.append(color_dict[degree])
+        sizes.append(size_dict[degree])
     
-    nx.draw_networkx_nodes(G, pos=pos,alpha=0.8,node_size= markersize,\
-        node_color=colors,linewidths=0)            
+    nx.draw_networkx_nodes(G, pos=pos,alpha=0.8,node_size=sizes,\
+        node_color=colors,linewidths=0,node_shape='o')            
     
     if verbose:
         print "\t from _drawGraph: drawing took %1.2f sec"%(time.clock()-start)
  
-def drawAndSafe(G,image_name,dest,redundancy,verbose,plot,figure_format,dpi):
+def drawAndSafe(G,image_name,dest,redundancy,verbose,plot,figure_format,dpi,\
+                graph_format):
     '''
     Draws a graph calling the helper function _drawGraph and saves it at
     destination "dest" with the name "image_name" + "_graph"
@@ -655,8 +659,25 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose,plot,figure_format,dpi):
         plt.savefig(join(dest,image_name + "_graph_" + mode + \
             "." + figure_format),dpi=dpi)
     figure_save = time.clock()
+
+    save_function_dict = {'gpickle':[nx.write_gpickle, '.gpickle'],
+                          'adjlist':[nx.write_adjlist,'.adjlist'],
+                          'gml': [nx.write_gml,'.gml'],
+                          'graphml':[nx.write_graphml,'graphml'],
+                          'shp': nx.write_shp,
+                          'edgelist':nx.write_edgelist,
+                          'yaml': nx.write_yaml,
+                          'weighted_edgelist': nx.write_weighted_edgelist,
+                          'multiline_adjlist': [nx.write_multiline_adjlist,'.adjlist'],
+                          'gexf': nx.write_gexf,
+                          'pjaek': nx.write_pajek}
     
-    nx.write_gpickle(G,join(dest,image_name + "_graph_" + mode + ".gpickle"))
+    graph_name = image_name + '_graph_' + mode   
+    if graph_format in save_function_dict:
+        save_function_dict[graph_format](G, join(dest, graph_name))    
+    else:
+        print "unknown graph format!"
+    
     graph_save = time.clock()
     if verbose:
         print "\t from drawAndSafe: figure saving took %1.2f sec"\

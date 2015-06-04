@@ -67,7 +67,7 @@ Optional: pruning -p
         Defaults to 5 which has proven to be a reasonable number of nodes 
         to prune away.
         
-Optional: minimum_feature_size -s
+Optional: minimum_feature_size -m
         If minimum_feature_size in pixels is specified, features with a size of
         up to minimum_feature_size will be removed from the binary image
         previous to processing. This serves to a) reduce the number of contours
@@ -76,11 +76,11 @@ Optional: minimum_feature_size -s
         within holes.
         Defaults to 3000 pixels.
 
-Optional: image_improvement -i
-        If image_improvement is enabled, the binary image will be smoothed
+Optional: smoothing -s
+        If smoothing is enabled, the binary image will be smoothed
         using binary opening and closing operations. The kernel size of said
         operations can be controlled by passing an integer along with the
-        image_improvement option. The right kernel size is highly dependant on
+        smoothing option. The right kernel size is highly dependant on
         the resolution of the image. As a rule of thumb choose a kernel size
         below the width of the smallest feature in the image (in pixels).
         Defaults to 3 pixels.
@@ -161,11 +161,11 @@ parser.add_argument('-r','--redundancy', type=int, help='Sets the desired '\
                 + 'number of redundant nodes in the output graph',\
                 default=0,choices=[0,1,2])
 
-parser.add_argument('-s','--minimum_feature_size', type=int, \
+parser.add_argument('-m','--minimum_feature_size', type=int, \
                 help='Minimum size (pixels) up to which features will be ' + \
                 'discarded.', default = 3000)
 
-parser.add_argument('-i','--image_improvement',type=int,\
+parser.add_argument('-s','--smoothing',type=int,\
                     help='Turns on image smoothing via binary opening and '+\
                     'closing. Sets kernel size of the morphology operators '+\
                     'to argument value.', default=False)
@@ -173,9 +173,15 @@ parser.add_argument('-i','--image_improvement',type=int,\
 parser.add_argument('-plt','--plot',action='store_true',default=False,\
                     help='Enables plotting')
 
-parser.add_argument('-format','--figure_format',type=str,\
+parser.add_argument('-fformat','--figure_format',type=str,\
                     help='Specifies the file format of plots.',\
                     default='pdf')
+                    
+parser.add_argument('-gformat','--graph_format',type=str,\
+                    help='Specifies the file format of graphs.',\
+                    default='gpickle',choices=['gpickle','adjlist','edgelist',\
+                    'dot','gml','graphml','gexf','shp','yaml','pajek',\
+                    'weighted_edgelist','multiline_adjlist'])
 
 parser.add_argument('-dpi', '--resolution', type=int, help='Sets dpi' +\
          '(dots per inch) for plots.', default = 500)
@@ -192,9 +198,10 @@ order = args.pruning                                                           #
 redundancy = args.redundancy                                                   #parameter for the number of redundant nodes in the final graph
 contour_threshold = 5                                                          #Contours shorter than threshold are discarded.
 minimum_feature_size = args.minimum_feature_size                               #features smaller than minimum_feature_size will be discarded.
-image_improvement = args.image_improvement                                     #enables smoothing via binary opening and closing on and off
+smoothing = args.smoothing                                                     #enables smoothing via binary opening and closing on and off
 plot = args.plot                                                               #enables visualization of extracted networks
 figure_format = args.figure_format                                             #specifies desired format to save plots
+graph_format = args.graph_format
 dpi = args.resolution                                                          #specifies resolution of plots (will be ignored if figure format is pdf)               
 save_distance_map = args.distance_map                                          #enables saving of the euclidean distance map
 
@@ -216,9 +223,9 @@ image = np.where(image < 127,0,1)                                              #
 
 image = remove_small_objects(image.astype(bool),\
                                  min_size=minimum_feature_size,connectivity=1)
-if image_improvement:                                                          #standard binary image noise-removal with opening followed by closing
-    image = binary_opening(image,disk(image_improvement))                      #maybe remove this processing step if depicted structures are really tiny
-    image = binary_closing(image,disk(image_improvement))
+if smoothing:                                                                  #standard binary image noise-removal with opening followed by closing
+    image = binary_opening(image,disk(smoothing))                              #maybe remove this processing step if depicted structures are really tiny
+    image = binary_closing(image,disk(smoothing))
 
 image = remove_small_objects(image.astype(bool),\
                                  min_size=minimum_feature_size,connectivity=1)
@@ -439,18 +446,20 @@ Redundant node removal
           graph
 """
 if redundancy == 2: 
-    nh.drawAndSafe(G,image_name,dest,2,verbose,plot,figure_format,dpi)         #draw and safe graph with redundant nodes                         
-
+    nh.drawAndSafe(G,image_name,dest,2,verbose,plot,figure_format,dpi,\
+        graph_format)                                                          #draw and safe graph with redundant nodes
 if debug:
     nh.drawGraphTriangulation(height,G,triangles,image_name,dest,\
         distance_map,figure_format, dpi)
 
 if redundancy == 1 or redundancy == 2:                                         #draw and safe graph with half redundant nodes
     G = nh.removeRedundantNodes(G,verbose,1)
-    nh.drawAndSafe(G,image_name,dest,1,verbose,plot,figure_format,dpi)
+    nh.drawAndSafe(G,image_name,dest,1,verbose,plot,figure_format,dpi,\
+        graph_format)
     
 G = nh.removeRedundantNodes(G,verbose,0)                                       #draw and safe graph without redundant nodes
-nh.drawAndSafe(G,image_name,dest,0,verbose,plot,figure_format,dpi)										
+nh.drawAndSafe(G,image_name,dest,0,verbose,plot,figure_format,dpi,\
+        graph_format)										
 
 if verbose:
     step = time.clock()                                                        #progress output
