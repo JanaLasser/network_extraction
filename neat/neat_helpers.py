@@ -664,17 +664,20 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose,plot,figure_format,dpi,\
                           'adjlist':[nx.write_adjlist,'.adjlist'],
                           'gml': [nx.write_gml,'.gml'],
                           'graphml':[nx.write_graphml,'graphml'],
-                          'shp': nx.write_shp,
-                          'edgelist':nx.write_edgelist,
-                          'yaml': nx.write_yaml,
-                          'weighted_edgelist': nx.write_weighted_edgelist,
+                          'edgelist':[nx.write_edgelist,'.edgelist'],
+                          'yaml': [nx.write_yaml,'.yaml'],
+                          'weighted_edgelist': [nx.write_weighted_edgelist,'.edgelist'],
                           'multiline_adjlist': [nx.write_multiline_adjlist,'.adjlist'],
-                          'gexf': nx.write_gexf,
-                          'pjaek': nx.write_pajek}
+                          'gexf': [nx.write_gexf,'.gexf'],
+                          'pajek': [nx.write_pajek,'.net']}
     
-    graph_name = image_name + '_graph_' + mode   
+    graph_name = image_name + '_graph_' + mode 
+    writefunc = save_function_dict[graph_format][0]
+    writeformat = save_function_dict[graph_format][1]
     if graph_format in save_function_dict:
-        save_function_dict[graph_format](G, join(dest, graph_name))    
+        if graph_format == 'graphml' or graph_format == 'gexf':
+            G = _convertNumbers(G)
+        writefunc(G, join(dest, graph_name + writeformat))    
     else:
         print "unknown graph format!"
     
@@ -685,6 +688,17 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose,plot,figure_format,dpi,\
         print "\t from drawAndSafe: graph saving took %1.2f sec"\
               %(graph_save-figure_save)
     plt.close()
+    
+def _convertNumbers(G):
+    for n in G.nodes(data=True):
+        n[1]['x'] = float(n[1]['x'])
+        n[1]['y'] = float(n[1]['y'])
+        n[1]['conductivity'] = float(n[1]['conductivity'])
+    for e in G.edges(data=True):
+        e[2]['weight'] = float(e[2]['weight'])
+        e[2]['conductivity'] = float(e[2]['conductivity'])
+    return G
+    
   
 
 def drawTriangulation(h,triangles,image_name,dest,distance_map, \

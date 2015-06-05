@@ -111,7 +111,7 @@ Optional: plot -plt
         with a high dpi (>2000 so features are still recognizeable) might work.
         Per default, visualization is disabled to safe time.
 
-Optional: figure_format -format
+Optional: figure_format -fformat
         Sets the output format of plots (networks or debugging plots) to the
         desired format. Supported formats include: pdf, png, jpg, tif
         (look at matplotlib's safefig-function for a complete list).
@@ -122,6 +122,14 @@ Optional: figure_format -format
         as png with a high resolution (use dpi option to crank up resolution).
         This saves time and yields acceptable results.
         Defaults to pdf.
+        
+Optional graph_format -gformat:
+        Sets the output format of graphs to the desired formad. Supported 
+        formats are [gpickle, adjlist, gml, graphml, edgelist, yaml,
+        weighted_edgelist, multiline_adjlist, gexf, pajek]. Have a look at the
+        different networkx.write_ ... functions for an in detail explanation.
+        Default is .gpickle wich is a dump of a python object which can easily
+        be read again using networkx.read_gpickle.
 
 Optional: resolution -dpi
         Sets the resolution (dots per inch) for plots (networks or debugging
