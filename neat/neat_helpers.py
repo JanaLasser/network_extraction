@@ -1,11 +1,22 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 15 13:34:10 2015
-
-@author: Jana Lasser
-"""
 '''
-Copyright (C) 2015 Jana Lasser GPL-3.0
+    Copyright (C) 2015  Jana Lasser Max Planck Institute for Dynamics and
+    Self Organization Goettingen
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    If you find any bugs or have any suggestions, please contact me at
+    jana.lasser@ds.mpg.de
 '''
 
 #standard imports
@@ -20,7 +31,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from PIL import Image
 import cv2
-import cv
 
 #custom classes and functions from the cythonized helper library
 from C_neat_functions import CbuildTriangles, CbruteforcePruning
@@ -375,10 +385,10 @@ def bruteforcePruning(triangles,order,verbose):
     
 def cvDistanceMap(image):
     '''
-    Wrapper for openCV's DistTransform function
+    Wrapper for openCV's distanceTransform function
     (see http://docs.opencv.org/modules/imgproc/doc/
-        miscellaneous_transformations.html#cv.DistTransform)
-    which sets all options with values that fit the processing of leaves.
+            miscellaneous_transformations.html#cv2.distanceTransform)
+    which sets all options to values that fit the processing of leaves.
 
     Parameter:
     ----------
@@ -389,21 +399,13 @@ def cvDistanceMap(image):
     -------
         dst: ndarray, distance map of the image with precisely calculated
              distances
-        
-    Notes:
-    -----
-        The function on the openCV side only exists within cv and not cv2 so
-        internally the ndarray will be converted to a CvMat and converted back 
-        to a ndarray at the end.  
     '''
     image = image.astype(np.uint8)
-    image = cv.fromarray(image)
-    dst = cv.CreateMat(image.rows,image.cols,cv.CV_32FC1)
-    cv.DistTransform(image,dst,distance_type=cv.CV_DIST_L2,\
-                     mask_size=cv.CV_DIST_MASK_PRECISE)
-    dst = np.asarray(dst)
-    #dst = cv2.distanceTransform(image,distanceType=cv.CV_DIST_L2,\
-    #    maskSize= cv.CV_DIST_MASK_PRECISE)
+    
+    #distanceType = 2 corresponds to the old cv.CV_DIST_L2
+    #maskSize = 0 corresponds to the old cv.CV_DIST_MASK_PRECISE 
+    dst = cv2.distanceTransform(image,distanceType=2,\
+                     maskSize=0)
     return dst
 
 def createGraph(adjacency_matrix,all_triangles,height):
