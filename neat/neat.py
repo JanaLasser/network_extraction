@@ -147,7 +147,8 @@ Optional: distance_map -dm
 
 """				
 
-parser = argparse.ArgumentParser(description='Vectorize: a program that ' +\
+parser = argparse.ArgumentParser(description='Neat (Network Extraction and '\
+    + 'Analysis Tool): a program that ' +\
     'extracts network information from a binary image containing ribbon-like,'\
     + ' connected shapes.\nCopyright (C) 2015 Jana Lasser')
 
@@ -235,7 +236,8 @@ if smoothing:                                                                  #
     image = binary_opening(image,disk(smoothing))                              #maybe remove this processing step if depicted structures are really tiny
     image = binary_closing(image,disk(smoothing))
 
-image = remove_small_objects(image.astype(bool),\
+if minimum_feature_size:
+    image = remove_small_objects(image.astype(bool),\
                                  min_size=minimum_feature_size,connectivity=1)
 
 distance_map = nh.cvDistanceMap(image).astype(np.int)                          #Create distance map

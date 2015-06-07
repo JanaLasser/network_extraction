@@ -37,8 +37,8 @@ from C_neat_functions import CbuildTriangles, CbruteforcePruning
 from C_neat_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
-markersize = 4
-edgesize = 0.6
+markersize = 0
+edgesize = 1
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
 #functions used in the vectorize.py script
@@ -470,6 +470,7 @@ def createGraph(adjacency_matrix,all_triangles,height):
 
 
 def removeRedundantNodes(G,verbose,mode):
+    print G.edges(data=True)[0]
     '''
         Removes a specified number of redundant nodes from the graph. Nodes
         should be removed in place but the graph is returned nevertheless.
@@ -611,6 +612,7 @@ def _drawGraph(G,verbose):
     scale = 1
     ax = plt.gca()
     ax.set_aspect('equal')
+    plt.axis('off')
     pos = {}
     for k in G.node.keys():
         pos[k] = (G.node[k]['x']*scale, G.node[k]['y']*scale)
@@ -619,7 +621,7 @@ def _drawGraph(G,verbose):
     widths = 15./(np.amax(widths)*2)*widths*edgesize
 
     nx.draw_networkx_edges(G, pos=pos, width=widths,edgecolor='DarkSlateGray',
-                           alpha=0.4)
+                           alpha=1)
 
     #TODO: find out why degrees can be > 3!    
     color_dict = {3:"orange",2:"purple",1:"red",4:"blue",5:"blue",6:"blue"}
