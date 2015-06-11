@@ -7,7 +7,7 @@ The original images used as examples in the paper can be found in the /data dire
 The neat framework is a set of python scripts that make use of the python module neat_helpers and the cythonized library C_neat_functions.
 For neat to work you will need three things
 1) a working installation of python 2.7 and pip
-2) the third party libraries utilized within NEAT (scipy, numpy, matplotlib, cython, networkx, scikit-image, opencv, pillow, shapely)
+2) the third party libraries utilized within NEAT (scipy, numpy, matplotlib, cython, networkx, scikit-image, opencv, pillow, shapely, meshpy)
 3) a version of the C_neat_functions.pyx file compiled for your platform
 In the following we detail how to get these three things on Linux, Windows and MacOS platforms.
 
@@ -28,7 +28,7 @@ Now you have pip, it should be easy to install most of the other libraries. For 
 
 pip install networkx
 
-Repeat this process with scipy, matplotlib, cython, scikit-image, pillow and shapely. 
+Repeat this process with scipy, matplotlib, cython, scikit-image, pillow, meshpy and shapely. 
 To install opencv, follow the instructions detailed here http://docs.opencv.org/doc/tutorials/introduction/linux_install/linux_install.html.
 
 3) To compile your own C_neat_functions.so file, navigate to the /neat directory and run
@@ -52,7 +52,7 @@ python ez_setup.py
 
 2) Thankfully, Christoph Gohlke maintains a site with a wide collection of python packages for windows. Go to
 http://www.lfd.uci.edu/~gohlke/pythonlibs/ and download the .whl files for scipy, numpy, matplotlib, cython, networkx, scikit-image,
- opencv, pillow and shapely that fit your platform. Install the packages by navigating to the directory you saved them in and run
+ opencv, pillow, meshpy and shapely that fit your platform. Install the packages by navigating to the directory you saved them in and run
 
 pip install SomePackage.whl
 
@@ -90,7 +90,7 @@ Now you have pip, it should be easy to install most of the other libraries. For 
 
 pip install networkx
 
-Repeat this process with scipy, matplotlib, cython, scikit-image, pillow and shapely. 
+Repeat this process with scipy, matplotlib, cython, scikit-image, pillow, meshpy and shapely. 
 To install opencv, follow the instructions detailed here http://tilomitra.com/opencv-on-mac-osx/.
 
 3) Navigate to the folder /neat and run
