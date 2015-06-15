@@ -33,6 +33,8 @@ In the following we detail how to get these three things on Linux, Windows and M
 	```
 	This should create two files called *C_neat_functions.so* and *C_neat_functions.c*, the first you need, the latter you can safely delete.
 
+--------------------------------------------------
+
 ## Windows
 1. Download the latest python 2.7 release [here](https://www.python.org/downloads/) and install it.
 	To get pip, if you are on windows 8 or later, start Powershell and run
@@ -71,6 +73,8 @@ In the following we detail how to get these three things on Linux, Windows and M
 	```
 	If it still does not work, good luck!
 
+--------------------------------------------------
+
 ## Mac OSX
 1. Download and install the latest python 2.7 release [here](https://www.python.org/downloads/) and install it.
 	Depending on whether you have access to easy_install or curl, run one of the following
@@ -97,6 +101,7 @@ In the following we detail how to get these three things on Linux, Windows and M
 	```
 	This should create two files called *C_neat_functions.so* and *C_neat_functions.c*, the first you need, the latter you can safely delete.
 
+________________________________________________________
 
 # Extracting network data using the NEAT framework 
 The network extraction and analysis tool (NEAT) is intended for the extraction of network data from images which can later be analyzed easily.
@@ -148,11 +153,13 @@ To segment an image of a leaf venation pattern (for example *leaf1.png*) with pa
 python binarize_leaf.py ../data/originals/leaf1.png -g 5 -eq 11 -r 0.5 -o 25 -s 3 -m 50000
 ```
 
+--------------------------------------------------
+
 ## neat
 Extraction of network data is done with the *neat.py* script. NEAT takes the path to a binary (black and white) image as required command line argument and extracts a graph (networkx graph-object) from the largest connected component in the image. The format of the binary image needs to be pixel based (vector graphics need to be converted first) but other than that, [all formats supported by the PIL library](http://pillow.readthedocs.org/en/latest/handbook/image-file-formats.html) are possible.
 NEAT's behaviour can be modified by several parameters and switches:
 - **-source** Required argument. The path to the image you want to process, for example *../data/originals/tracheole3.png*. Either a relative path to the processing script or a total path works.
-- **help** displays all available options with a short description in the command line.
+- **-help** displays all available options with a short description in the command line.
 - **-dest** (default = **source**) If you want to save NEAT's results in a different folder than **source**, specify the **dest** argument. If for example you want to process *leaf1.png* from the */data/originals* folder but save the resulting network in the */neat* folder, specify **-dest** *../neat/*. Either a relative path to the processing script or a total path works.
 - **-v** (default = False) NEAT is run via the command line but by default it will not produce any command line output to avoid spam. If you enable verbosity by specifying **v**, NEAT will report on its current processing state and output some information on how long it took the script to complete the previous processing step.
 - **-d** (default = False) If something goes wrong, NEAT crackes or the output is not what you expected, it might help to enable the debugging mode by specifying **d**. This will further increase the verposity of the script. Moreover, NEAT will save visualizations of intermediate processing steps so you can have a look and maybe figure out what is going wrong. The visualizations include a plot of the extracted contours, the triangulation and an overlay of the contours, triangulation, distance map and extracted network.
@@ -166,38 +173,50 @@ If you want do visualize a really large graph, I would recommend to set **fforma
 - **dpi** (default = 500) If saving plots in non-vector-graphics formats like *.png* or *.jpg* you can change the resolution by specifying the **dpi** argument. 
 - **-gformat** (default = *.gpickle*) If you want to change the format the extracted graph is saved in, specify the **gformat** argument. For a list of supported formats, have a look at the [networkx reading and writing graphs documentation](https://networkx.github.io/documentation/latest/reference/readwrite.html). The default *.gpickle* format is a dump of a python object (in this case a networkx.Graph object). It is handy as all our processing is done in python and it can easily be read again to be the same python object it was before saving to the harddrive. For a cross-program format *.gml* most likely is the best choice as it is widely used and simple.
 - **-r** (default r = 0) During the extraction process, the graph is made up of many points originally stemming from the triangles making up the contstrained delaunay triangulation at the heart of the vectorization process. Most of these points are not important for the topology of the graph (we therefore call them "redundant") as they lie on long stretches of the network that do neither represent junctions nor tips. These points are only there to support the geometry of the network. By specifying **r** you can decide how many of these redundant points you want to keep in your final representation. If *r = 0* only nodes and tips will be saved and all redundant points will be discarded - this is nice if you don't care about geometry and want to save some time and disk space. If *r = 1*, approximately half of the redundant points will be kept. This is a good compromise between an acceptable approximation of the network's geometry and speed/size. If *r = 2*, all redundant points will be saved. This produces large files and the resulting graphs might take some time to load and analyze but it also has by far the best approximation of the network's geometry.
-- **p** (default p = 3) If the edges of your binary image are noisy, jagged or especially wiggly (which is the case for most images of biological networks), this might lead to the emergence of spurious branches in the extracted networks. These branches are extremely short and therefore easily recognizeable. By pruning away all branches that are shorter than **p** points (see the definition of redundant points in the description of the **r** parameter), we get rid of spurious branches. Treat **p** with care as you might lose information if **p** is too high (genuine branches are pruned away) and if **p** is too low, spurious branches might remain. **p** should be choosen considerably smaller than the average edge length, commonly between 2 and 6.
+- **-p** (default p = 3) If the edges of your binary image are noisy, jagged or especially wiggly (which is the case for most images of biological networks), this might lead to the emergence of spurious branches in the extracted networks. These branches are extremely short and therefore easily recognizeable. By pruning away all branches that are shorter than **p** points (see the definition of redundant points in the description of the **r** parameter), we get rid of spurious branches. Treat **p** with care as you might lose information if **p** is too high (genuine branches are pruned away) and if **p** is too low, spurious branches might remain. **p** should be choosen considerably smaller than the average edge length, commonly between 2 and 6.
 **m** (default m = False) If you are given a binary image that was maybe not processed with one of the *binarize* scripts and with whose quality you are not satisfied, you can use the **m** parameter, to remove disconnected artifacts and noise from the image (as described in the *binarize* section).
 **s** (default s = False) As with the **m** parameter, by specifying **s** you can do some improvement of your binary image by smoothing contours before you start processing (as described in the *binarize* section).
+**dm** (default dm = False) If you want to save the distance map that is created during the graph extraction process, enable **dm**. If you want to later open and edit the graph with *GeGUI*, you will need the distance map so better save it right away, it will be created anyways.
 
 If you want to extract a graph from the image */data/binaries/tracheole6.png*, set pruning to 5, save all redundant nodes, enable verbosity and additionally save a visualization of the graph in *.png* format with a resolution of 2000 dpi, run
 ```
 python neat.py ../data/binaries/tracheole6.png -p 5 -r 2 -v -plt -fformat png -dpi 2000
 ```
-If you have a shitty binary that you want to smooth and clear up (like */data/binaries/tracheole8.png*), you want no pruning, are content with only some redundant nodes, want to have a visualization of intermediate steps and verbosity but no plot of the final graph, then run
+If you have a shitty binary that you want to smooth and clear up (like */data/binaries/tracheole8.png*), you want no pruning, are content with only some redundant nodes, want to have a visualization of intermediate steps, verbosity and a distance map but no plot of the final graph, then run
 ``` 
-python neat.py ../data/binaries/tracheole8.png -s 2 -m 1000 -p 0 -r 1 -d -v
+python neat.py ../data/binaries/tracheole8.png -s 2 -m 1000 -p 0 -r 1 -d -v -dm
 ```
 
+--------------------------------------------------
 
 ## gegui
-I have been dealing with networks extracted from pseudo 2D structures a lot. These images are projections onto a plane and therefore might contain network "crossings" which arent real but just created by superposition of two branches.
-To correct these "false junctions" I have writtenthe GeGUI (graph edit GUI) which allows you to load the extracted graph object, superimpose it onto the original image and modify the graph's structure by manually deleting and creating nodes and edges.
-The script to start the GUI is called GeGUI.py but all the functionality is placed in the three sub-scripts InterActor (dealing with user-interaction), GraphHandler (dealing with manipulations of the graph object) abd PlotHandler (dealing with the dynamic display of changes to the graph on the screen). To run the GeGUI you need to specify a folder in which the graph you want to process is located. The folder also needs to hold an euclidean distance map of the binary the graph was created from and the original image for the GeGUI to properly start. Therefore the folder should look like this:
+I have been dealing with networks extracted from pseudo 2D structures a lot (especially the tracheole dataset). These images are projections onto a plane and therefore might contain network "crossings" which arent real but just created by superposition of two branches.
+To correct these spurious junctions I have written the *GeGUI* (graph edit GUI) which allows you to load the extracted graph object, superimpose it onto the original image and modify the graph's structure by manually deleting and creating nodes and edges.
+The script to start the GUI is called *gegui.py* but all the functionality is placed in the three sub-scripts *InterActor.py* (dealing with user-interaction), *GraphHandler.py* (dealing with manipulations of the graph object) and *PlotHandler.py* (dealing with the dynamic display of changes to the graph on the screen). To run the *GeGUI* you need to specify a folder in which the graph you want to process is located. For the GeGUI to properly start the folder also needs to contain an euclidean distance map of the binary the graph was extracted from and the original image. Therefore the folder should look like this:
 
-resultdir
-	*original_image.tif*
-	*extracted_graph_red1.gpickle*
-	*distance_map_dm.png*
+```
+/resultdir
+----*original_image.png*
+----*extracted_graph_red1.gpickle*
+----*distance_map_dm.png*
+```
 
+I the */data/results* folder I have prepared several such folders (e.g. *tracheole1*, *tracheole2* and *tracheole3*) to test *GeGUI*. If you want to load and process for example the graph extracted from *tracheole1.png*, run
+```
+python gegui.py ../data/results/tracheole1
+```
 
-	python GeGUI.py /dir/subdir1/subdir2/dirofimage/  
-
+--------------------------------------------------
 
 ## analyze
 
 
-
+### TODO
+- sort NEAT's options in a comprehensible way
+- refer to the methods paper as soon as it is in the ArXiv
+- implement an option to modify the node size in plots
+- specify how GeGUI selects the right files in a folder
+- describe the analyze script
 
 
 
