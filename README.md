@@ -117,57 +117,76 @@ The workflow is broken down into four steps represented by four processing scrip
 binarize
 --------
 To get from a grayscale to a suitable binary image can be tricky. I have provided rudimentary scripts which do some contrast improvement and thresholding for different kinds of images (*binarize_tracheole.py* for tracheoles, *binarize_crack.py* for cracks and *binarize_leaf.py* for leaves). 
-All scripts take the path to the image as required arguments as well as some optional arguments to modify their behaviour. 
+All scripts take the path to the image as required arguments as well as some optional arguments to modify their behaviour.
+Imput images can be of several formats (read the [PIL Image file formats documentation](http://pillow.readthedocs.org/en/latest/handbook/image-file-formats.html) for reference). Common formats like *.png*, *.jpg* and *.tif* are supported in any case.
 
 ### Tracheoles and Cracks
 The two scripts behave similarly with regards to their processing methods. I have separated the scripts nevertheless to improve clarity and enable diversification later on. Available parameters are
 
-- **g** kernel size of the gaussian blur applied to reduce noise in the image at the beginning. g should be significantly smaller than the smallest structure in the image you want to resolve. If g = 0, no gaussian blur will occur.
-- **t** value for the threshold used for dividing the image into background and foreground (black and white). E.g. if t = 100, all pixels with a value smaller or equal t will be mapped to 0 (black) and all pixels larger than t will be mapped to one (white). t should be choosen in a way that all important structures are present and connected while everything that belongs to the background vanishes.
-- **s** kernel size of the binary opening and closing operators applied to smoothen the contours of the foreground. s should be considerably smaller than the diameter of the thinnest network part. If s is too high, information is lost as foreground structures vanish. If s is too small, the operation has close to no effect. If s = 0, no smoothing will occur.
-- **m** minimum size of features (in pixels) that will be preserved in the image. This will remove artifacts and noise that are disconnected from the main network. If for example m = 5000, structures composed of less than 5000 pixels will be removed from the image. In general, I advise to set m smaller than 1/10th of the total number of pixels in the image. If m is choosen to high, the main structure might vanish. If m is choosen too low, atrifacts and noise might remain in the image.
+- **-g** kernel size of the gaussian blur applied to reduce noise in the image at the beginning. *g* should be significantly smaller than the smallest structure in the image you want to resolve. *If g = 0*, no gaussian blur will occur.
+- **-t** value for the threshold used for dividing the image into background and foreground (black and white). E.g. if *t = 100*, all pixels with a value smaller or equal t will be mapped to zero (black) and all pixels larger than t will be mapped to one (white). t should be choosen in a way that all important structures are present and connected while everything that belongs to the background vanishes.
+- **-s** kernel size of the binary opening and closing operators applied to smoothen the contours of the foreground. *s* should be considerably smaller than the diameter of the thinnest network part. If *s* is too high, information is lost as foreground structures vanish. If s is too small, the operation has close to no effect. If *s = 0*, no smoothing will occur.
+- **-m** minimum size of features (in pixels) that will be preserved in the image. This will remove artifacts and noise that are disconnected from the main network. If for example *m = 5000*, structures composed of less than 5000 pixels will be removed from the image. In general, I advise to set *m* smaller than 1/10th of the total number of pixels in the image. If m is choosen to high, the main structure might vanish. If *m* is choosen too low, atrifacts and noise might remain in the image.
 
-To segment for example an image of a tracheole (for example tracheole1.png) with parameters g = 0 (no blurring), t = 110, s = 3 and m = 500, run
-
-```
-python binarize_tracheole.py ../data/tracheole1.png -g 0 -t 110 -s 3 -m 500
-```
-
-To segment for example an image of a crack pattern (for example cracks2.png) with parameters g = 3, t = 150, s = 2 and m = 10000, run
+To segment an image of a tracheole (for example *tracheole1.png*) with parameters *g = 0* (no blurring), *t = 110*, *s = 3* and *m = 500*, run
 
 ```
-python binarize_crack.py ../data/cracks2.png -g 3 -t 150 -s 2 -m 10000
+python binarize_tracheole.py ../data/originals/tracheole1.png -g 0 -t 110 -s 3 -m 500
+```
+
+To segment an image of a crack pattern (for example *cracks2.png*) with parameters *g = 3*, *t = 150*, *s = 2* and *m = 10000*, run
+
+```
+python binarize_crack.py ../data/originals/cracks2.png -g 3 -t 150 -s 2 -m 10000
 ```
 
 ### Leaves
 This script behaves a bit differently as in addition to thresholding and smoothing it also tries to increase the contrast in the image. Available parameters are
 
-- **g** as before: the kernel size of the gaussian blur operation.
-- **eq** the kernel size of the local histogram equalization applied to increase contrast.
-- **r** After local histogram equalization has been applied, a fraction of the processed image is recombined with a fraction of the original image. r determines this fraction. Therefore if r = 0.3, the outcome of the recombination process will be 0.3 x equalized image + 0.7 x original image.
-- **o** The threshold for thresholding the image to create a binary image is determined automatically using Otsu's method. o controls an offset to the automatically determined threshold. Therefore if o = 10 and the threshold calculated via Otsu's method equals 125, the image will be thresholded with a threshold t = 135 (also allows for negative values of o).
-- **s** as before: kernel size of the binary opening and closing operators for smoothing.
-- **m** as before: minimum feature size.
+- **-g** as before: the kernel size of the gaussian blur operation.
+- **-eq** the kernel size of the local histogram equalization applied to increase contrast. If *eq = 0*, no local histogram equalization will occur.
+- **-r** After local histogram equalization has been applied, a fraction of the processed image is recombined with a fraction of the original image. *r* determines said fraction. Therefore if *r = 0.3*, the outcome of the recombination process will be *0.3 x equalized image + 0.7 x original image*.
+- **-o** The threshold for thresholding the image to create a binary image is determined automatically using Otsu's method. *o* controls an offset to the automatically determined threshold. Therefore if *o = 10* and the threshold calculated via Otsu's method equals 125, the image will be thresholded with a threshold *t = 135* (also allows for negative values of *o*).
+- **-s** as before: kernel size of the binary opening and closing operators for smoothing.
+- **-m** as before: minimum feature size.
 
+To segment an image of a leaf venation pattern (for example *leaf1.png*) with parameters *g = 5*, *eq = 11*, *r = 0.5*, *o = 25*, *s = 3* and *m = 50000*, run
 
 ```
-python binarize_standalone.py /dir/subdir1/subdir2/grayscale_image.png -t 10
+python binarize_leaf.py ../data/originals/leaf1.png -g 5 -eq 11 -r 0.5 -o 25 -s 3 -m 50000
 ```
-As with NEAT, other formats as .png as supported as well.
-
 
 neat
 -----
-Extraction of network data is done with the neat.py script. NEAT takes the path to a binary (black and white) image as required command line argument and extracts a graph (networkx graph-object) from the largest connected component in the image. 
+Extraction of network data is done with the *neat.py* script. NEAT takes the path to a binary (black and white) image as required command line argument and extracts a graph (networkx graph-object) from the largest connected component in the image. The format of the binary image needs to be pixel based (vector graphics need to be converted first) but other than that, [all formats supported by the PIL library](http://pillow.readthedocs.org/en/latest/handbook/image-file-formats.html) are possible.
+NEAT's behaviour can be modified by several parameters and switches:
+- **-source** Required argument. The path to the image you want to process, for example *../data/originals/tracheole3.png*. Either a relative path to the processing script or a total path works.
+- **help** displays all available options with a short description in the command line.
+- **-dest** (default = **source**) If you want to save NEAT's results in a different folder than **source**, specify the **dest** argument. If for example you want to process *leaf1.png* from the */data/originals* folder but save the resulting network in the */neat* folder, specify **-dest** *../neat/*. Either a relative path to the processing script or a total path works.
+- **-v** (default = False) NEAT is run via the command line but by default it will not produce any command line output to avoid spam. If you enable verbosity by specifying **v**, NEAT will report on its current processing state and output some information on how long it took the script to complete the previous processing step.
+- **-d** (default = False) If something goes wrong, NEAT crackes or the output is not what you expected, it might help to enable the debugging mode by specifying **d**. This will further increase the verposity of the script. Moreover, NEAT will save visualizations of intermediate processing steps so you can have a look and maybe figure out what is going wrong. The visualizations include a plot of the extracted contours, the triangulation and an overlay of the contours, triangulation, distance map and extracted network.
+- **-plt** (default = False) Plotting and saving images (especially really large ones like NEAT is accustomed to dealing with) takes a lot of time. This is why by default visualization of the extracted networks is disabled. If you want to see what NEAT extracted, specify **plt**. By default, NEAT will save plots in *.pdf* format. This can take ages for graphs with more than ~1000 nodes. If you want to change the plot file format, specify the **fformat** argument.
+- **-fformat** (default = *.pdf*) File format of the plots if **plt** is enabled. To display all available formats for your platform, start a python interpreter (for example by typing 'python' in your terminal) and run
 ```
-python neat.py /dir/subdir1/subdir2/binary_image.png
+import matplotlib.pyplot as plt
+plt.gcf().canvas.get_supported_filetypes()
 ```
-NOTE: the format of the input image does not have to be .png, every format supported by the python image library (PIL) can be used.
-Further information about the options available to modify the behaviour and output of NEAT can be obtained by calling
+If you want do visualize a really large graph, I would recommend to set **fformat** to *.png* and crank up the resolution of the image by specifying **dpi** so details are still recognizeable.
+- **dpi** (default = 500) If saving plots in non-vector-graphics formats like *.png* or *.jpg* you can change the resolution by specifying the **dpi** argument. 
+- **-gformat** (default = *.gpickle*) If you want to change the format the extracted graph is saved in, specify the **gformat** argument. For a list of supported formats, have a look at the [networkx reading and writing graphs documentation](https://networkx.github.io/documentation/latest/reference/readwrite.html). The default *.gpickle* format is a dump of a python object (in this case a networkx.Graph object). It is handy as all our processing is done in python and it can easily be read again to be the same python object it was before saving to the harddrive. For a cross-program format *.gml* most likely is the best choice as it is widely used and simple.
+- **-r** (default r = 0) During the extraction process, the graph is made up of many points originally stemming from the triangles making up the contstrained delaunay triangulation at the heart of the vectorization process. Most of these points are not important for the topology of the graph (we therefore call them "redundant") as they lie on long stretches of the network that do neither represent junctions nor tips. These points are only there to support the geometry of the network. By specifying **r** you can decide how many of these redundant points you want to keep in your final representation. If *r = 0* only nodes and tips will be saved and all redundant points will be discarded - this is nice if you don't care about geometry and want to save some time and disk space. If *r = 1*, approximately half of the redundant points will be kept. This is a good compromise between an acceptable approximation of the network's geometry and speed/size. If *r = 2*, all redundant points will be saved. This produces large files and the resulting graphs might take some time to load and analyze but it also has by far the best approximation of the network's geometry.
+- **p** (default p = 3) If the edges of your binary image are noisy, jagged or especially wiggly (which is the case for most images of biological networks), this might lead to the emergence of spurious branches in the extracted networks. These branches are extremely short and therefore easily recognizeable. By pruning away all branches that are shorter than **p** points (see the definition of redundant points in the description of the **r** parameter), we get rid of spurious branches. Treat **p** with care as you might lose information if **p** is too high (genuine branches are pruned away) and if **p** is too low, spurious branches might remain. **p** should be choosen considerably smaller than the average edge length, commonly between 2 and 6.
+**m** (default m = False) If you are given a binary image that was maybe not processed with one of the *binarize* scripts and with whose quality you are not satisfied, you can use the **m** parameter, to remove disconnected artifacts and noise from the image (as described in the *binarize* section).
+**s** (default s = False) As with the **m** parameter, by specifying **s** you can do some improvement of your binary image by smoothing contours before you start processing (as described in the *binarize* section).
+
+If you want to extract a graph from the image */data/binaries/tracheole6.png*, set pruning to 5, save all redundant nodes, enable verbosity and additionally save a visualization of the graph in *.png* format with a resolution of 2000 dpi, run
 ```
-python neat.py --help
+python neat.py ../data/binaries/tracheole6.png -p 5 -r 2 -v -plt -fformat png -dpi 2000
 ```
-The script relies on a collection of functions from *neat_helpers.py* which in turn needs functions from *C_neat_functions.pyx*. The latter is written in cython and then compiled for speed. I have provided the original .pyx file as well as the .so file compiled for a linux (open suse) machine. Details on how to compile *C_neat_functions.pyx* for your platform can be found above.
+If you have a shitty binary that you want to smooth and clear up (like */data/binaries/tracheole8.png*), you want no pruning, are content with only some redundant nodes, want to have a visualization of intermediate steps and verbosity but no plot of the final graph, then run
+``` 
+python neat.py ../data/binaries/tracheole8.png -s 2 -m 1000 -p 0 -r 1 -d -v
+```
 
 
 gegui
