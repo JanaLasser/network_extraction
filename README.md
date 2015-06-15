@@ -1,17 +1,14 @@
 Disclaimer: The scripts and libraries uploaded in this project are intended to be a suite of tools for the extraction, manipulation and analysis of network data (graphs) from images. The scripts uploaded here are part of a methods paper detailing the algorithms used which is soon to be published.
 The original images used as examples in the paper can be found in the /data directory. The images represent a range of different use-cases for NEAt both from different research projects as well as with regards to the size of the networks they contain. They are ready to be processed without any further modifications.
 
-Setting up the NEAT framework
-=============================
-
+# Setting up the NEAT framework
 The neat framework is a set of python scripts that make use of the python module *neat_helpers* and the cythonized library *C_neat_functions*. For neat to work you will need three things
 1. a working installation of python 2.7 and pip
 2. the third party libraries utilized within NEAT (scipy, numpy, matplotlib, cython, networkx, scikit-image, opencv, pillow, shapely, meshpy)
 3. a version of the C_neat_functions.pyx file compiled for your platform
 In the following we detail how to get these three things on Linux, Windows and MacOS platforms.
 
-Linux
------
+## Linux
 1. Python 2.7 should be installed by default, if it is not, your package manager most likely will provide it.
 	 You can get pip by running  
 	```
@@ -36,8 +33,7 @@ Linux
 	```
 	This should create two files called *C_neat_functions.so* and *C_neat_functions.c*, the first you need, the latter you can safely delete.
 
-Windows
--------
+## Windows
 1. Download the latest python 2.7 release [here](https://www.python.org/downloads/) and install it.
 	To get pip, if you are on windows 8 or later, start Powershell and run
 	```
@@ -75,8 +71,7 @@ Windows
 	```
 	If it still does not work, good luck!
 
-Mac OSX
--------
+## Mac OSX
 1. Download and install the latest python 2.7 release [here](https://www.python.org/downloads/) and install it.
 	Depending on whether you have access to easy_install or curl, run one of the following
 	```
@@ -103,9 +98,7 @@ Mac OSX
 	This should create two files called *C_neat_functions.so* and *C_neat_functions.c*, the first you need, the latter you can safely delete.
 
 
-Extracting network data using the NEAT framework 
-=================================================
-
+# Extracting network data using the NEAT framework 
 The network extraction and analysis tool (NEAT) is intended for the extraction of network data from images which can later be analyzed easily.
 The workflow is broken down into four steps represented by four processing scripts
 
@@ -114,8 +107,7 @@ The workflow is broken down into four steps represented by four processing scrip
 3. Optional: manually correct errors in the network or remove artifacts using the graph-edit GUI gegui.py
 4. Analyze basic characteristics of the network with analyze.py
 
-binarize
---------
+## binarize
 To get from a grayscale to a suitable binary image can be tricky. I have provided rudimentary scripts which do some contrast improvement and thresholding for different kinds of images (*binarize_tracheole.py* for tracheoles, *binarize_crack.py* for cracks and *binarize_leaf.py* for leaves). 
 All scripts take the path to the image as required arguments as well as some optional arguments to modify their behaviour.
 Imput images can be of several formats (read the [PIL Image file formats documentation](http://pillow.readthedocs.org/en/latest/handbook/image-file-formats.html) for reference). Common formats like *.png*, *.jpg* and *.tif* are supported in any case.
@@ -156,8 +148,7 @@ To segment an image of a leaf venation pattern (for example *leaf1.png*) with pa
 python binarize_leaf.py ../data/originals/leaf1.png -g 5 -eq 11 -r 0.5 -o 25 -s 3 -m 50000
 ```
 
-neat
------
+## neat
 Extraction of network data is done with the *neat.py* script. NEAT takes the path to a binary (black and white) image as required command line argument and extracts a graph (networkx graph-object) from the largest connected component in the image. The format of the binary image needs to be pixel based (vector graphics need to be converted first) but other than that, [all formats supported by the PIL library](http://pillow.readthedocs.org/en/latest/handbook/image-file-formats.html) are possible.
 NEAT's behaviour can be modified by several parameters and switches:
 - **-source** Required argument. The path to the image you want to process, for example *../data/originals/tracheole3.png*. Either a relative path to the processing script or a total path works.
@@ -189,8 +180,7 @@ python neat.py ../data/binaries/tracheole8.png -s 2 -m 1000 -p 0 -r 1 -d -v
 ```
 
 
-gegui
------
+## gegui
 I have been dealing with networks extracted from pseudo 2D structures a lot. These images are projections onto a plane and therefore might contain network "crossings" which arent real but just created by superposition of two branches.
 To correct these "false junctions" I have writtenthe GeGUI (graph edit GUI) which allows you to load the extracted graph object, superimpose it onto the original image and modify the graph's structure by manually deleting and creating nodes and edges.
 The script to start the GUI is called GeGUI.py but all the functionality is placed in the three sub-scripts InterActor (dealing with user-interaction), GraphHandler (dealing with manipulations of the graph object) abd PlotHandler (dealing with the dynamic display of changes to the graph on the screen). To run the GeGUI you need to specify a folder in which the graph you want to process is located. The folder also needs to hold an euclidean distance map of the binary the graph was created from and the original image for the GeGUI to properly start. Therefore the folder should look like this:
@@ -204,8 +194,7 @@ resultdir
 	python GeGUI.py /dir/subdir1/subdir2/dirofimage/  
 
 
-analyze
--------
+## analyze
 
 
 
