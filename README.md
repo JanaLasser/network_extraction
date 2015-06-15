@@ -116,8 +116,40 @@ The workflow is broken down into four steps represented by four processing scrip
 
 binarize
 --------
-To get from a grayscale to a suitable binary image can be tricky. I have provided a rudimentary script which does some contrast improvement and thresholding (binarize.py and binarize_standalone.py). The scripts do the same with the only difference that the standalone does not require the C_neat_functions library to work.
-The script takes the path to the image it will process as well as an optinal modifier to the value used for thresholding the image as command line arguments
+To get from a grayscale to a suitable binary image can be tricky. I have provided rudimentary scripts which do some contrast improvement and thresholding for different kinds of images (*binarize_tracheole.py* for tracheoles, *binarize_crack.py* for cracks and *binarize_leaf.py* for leaves). 
+All scripts take the path to the image as required arguments as well as some optional arguments to modify their behaviour. 
+
+### Tracheoles and Cracks
+The two scripts behave similarly with regards to their processing methods. I have separated the scripts nevertheless to improve clarity and enable diversification later on. Available parameters are
+
+- **g** kernel size of the gaussian blur applied to reduce noise in the image at the beginning. g should be significantly smaller than the smallest structure in the image you want to resolve. If g = 0, no gaussian blur will occur.
+- **t** value for the threshold used for dividing the image into background and foreground (black and white). E.g. if t = 100, all pixels with a value smaller or equal t will be mapped to 0 (black) and all pixels larger than t will be mapped to one (white). t should be choosen in a way that all important structures are present and connected while everything that belongs to the background vanishes.
+- **s** kernel size of the binary opening and closing operators applied to smoothen the contours of the foreground. s should be considerably smaller than the diameter of the thinnest network part. If s is too high, information is lost as foreground structures vanish. If s is too small, the operation has close to no effect. If s = 0, no smoothing will occur.
+- **m** minimum size of features (in pixels) that will be preserved in the image. This will remove artifacts and noise that are disconnected from the main network. If for example m = 5000, structures composed of less than 5000 pixels will be removed from the image. In general, I advise to set m smaller than 1/10th of the total number of pixels in the image. If m is choosen to high, the main structure might vanish. If m is choosen too low, atrifacts and noise might remain in the image.
+
+To segment for example an image of a tracheole (for example tracheole1.png) with parameters g = 0 (no blurring), t = 110, s = 3 and m = 500, run
+
+```
+python binarize_tracheole.py ../data/tracheole1.png -g 0 -t 110 -s 3 -m 500
+```
+
+To segment for example an image of a crack pattern (for example cracks2.png) with parameters g = 3, t = 150, s = 2 and m = 10000, run
+
+```
+python binarize_crack.py ../data/cracks2.png -g 3 -t 150 -s 2 -m 10000
+```
+
+### Leaves
+This script behaves a bit differently as in addition to thresholding and smoothing it also tries to increase the contrast in the image. Available parameters are
+
+- **g** as before: the kernel size of the gaussian blur operation.
+- **eq** the kernel size of the local histogram equalization applied to increase contrast.
+- **r** After local histogram equalization has been applied, a fraction of the processed image is recombined with a fraction of the original image. r determines this fraction. Therefore if r = 0.3, the outcome of the recombination process will be 0.3 x equalized image + 0.7 x original image.
+- **o** The threshold for thresholding the image to create a binary image is determined automatically using Otsu's method. o controls an offset to the automatically determined threshold. Therefore if o = 10 and the threshold calculated via Otsu's method equals 125, the image will be thresholded with a threshold t = 135 (also allows for negative values of o).
+- **s** as before: kernel size of the binary opening and closing operators for smoothing.
+- **m** as before: minimum feature size.
+
+
 ```
 python binarize_standalone.py /dir/subdir1/subdir2/grayscale_image.png -t 10
 ```
