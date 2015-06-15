@@ -165,7 +165,7 @@ NEAT's behaviour can be modified by several parameters and switches:
 - **-d** (default = False) If something goes wrong, NEAT crackes or the output is not what you expected, it might help to enable the debugging mode by specifying **d**. This will further increase the verposity of the script. Moreover, NEAT will save visualizations of intermediate processing steps so you can have a look and maybe figure out what is going wrong. The visualizations include a plot of the extracted contours, the triangulation and an overlay of the contours, triangulation, distance map and extracted network.
 - **-plt** (default = False) Plotting and saving images (especially really large ones like NEAT is accustomed to dealing with) takes a lot of time. This is why by default visualization of the extracted networks is disabled. If you want to see what NEAT extracted, specify **plt**. By default, NEAT will save plots in *.pdf* format. This can take ages for graphs with more than ~1000 nodes. If you want to change the plot file format, specify the **fformat** argument.
 - **-fformat** (default = *.pdf*) File format of the plots if **plt** is enabled. To display all available formats for your platform, start a python interpreter (for example by typing 'python' in your terminal) and run
-```
+```python
 import matplotlib.pyplot as plt
 plt.gcf().canvas.get_supported_filetypes()
 ```
@@ -174,9 +174,9 @@ If you want do visualize a really large graph, I would recommend to set **fforma
 - **-gformat** (default = *.gpickle*) If you want to change the format the extracted graph is saved in, specify the **gformat** argument. For a list of supported formats, have a look at the [networkx reading and writing graphs documentation](https://networkx.github.io/documentation/latest/reference/readwrite.html). The default *.gpickle* format is a dump of a python object (in this case a networkx.Graph object). It is handy as all our processing is done in python and it can easily be read again to be the same python object it was before saving to the harddrive. For a cross-program format *.gml* most likely is the best choice as it is widely used and simple.
 - **-r** (default r = 0) During the extraction process, the graph is made up of many points originally stemming from the triangles making up the contstrained delaunay triangulation at the heart of the vectorization process. Most of these points are not important for the topology of the graph (we therefore call them "redundant") as they lie on long stretches of the network that do neither represent junctions nor tips. These points are only there to support the geometry of the network. By specifying **r** you can decide how many of these redundant points you want to keep in your final representation. If *r = 0* only nodes and tips will be saved and all redundant points will be discarded - this is nice if you don't care about geometry and want to save some time and disk space. If *r = 1*, approximately half of the redundant points will be kept. This is a good compromise between an acceptable approximation of the network's geometry and speed/size. If *r = 2*, all redundant points will be saved. This produces large files and the resulting graphs might take some time to load and analyze but it also has by far the best approximation of the network's geometry.
 - **-p** (default p = 3) If the edges of your binary image are noisy, jagged or especially wiggly (which is the case for most images of biological networks), this might lead to the emergence of spurious branches in the extracted networks. These branches are extremely short and therefore easily recognizeable. By pruning away all branches that are shorter than **p** points (see the definition of redundant points in the description of the **r** parameter), we get rid of spurious branches. Treat **p** with care as you might lose information if **p** is too high (genuine branches are pruned away) and if **p** is too low, spurious branches might remain. **p** should be choosen considerably smaller than the average edge length, commonly between 2 and 6.
-**m** (default m = False) If you are given a binary image that was maybe not processed with one of the *binarize* scripts and with whose quality you are not satisfied, you can use the **m** parameter, to remove disconnected artifacts and noise from the image (as described in the *binarize* section).
-**s** (default s = False) As with the **m** parameter, by specifying **s** you can do some improvement of your binary image by smoothing contours before you start processing (as described in the *binarize* section).
-**dm** (default dm = False) If you want to save the distance map that is created during the graph extraction process, enable **dm**. If you want to later open and edit the graph with *GeGUI*, you will need the distance map so better save it right away, it will be created anyways.
+- **m** (default m = False) If you are given a binary image that was maybe not processed with one of the *binarize* scripts and with whose quality you are not satisfied, you can use the **m** parameter, to remove disconnected artifacts and noise from the image (as described in the *binarize* section).
+- **s** (default s = False) As with the **m** parameter, by specifying **s** you can do some improvement of your binary image by smoothing contours before you start processing (as described in the *binarize* section).
+- **dm** (default dm = False) If you want to save the distance map that is created during the graph extraction process, enable **dm**. If you want to later open and edit the graph with *GeGUI*, you will need the distance map so better save it right away, it will be created anyways.
 
 If you want to extract a graph from the image */data/binaries/tracheole6.png*, set pruning to 5, save all redundant nodes, enable verbosity and additionally save a visualization of the graph in *.png* format with a resolution of 2000 dpi, run
 ```
@@ -196,9 +196,9 @@ The script to start the GUI is called *gegui.py* but all the functionality is pl
 
 ```
 /resultdir
-----*original_image.png*
-----*extracted_graph_red1.gpickle*
-----*distance_map_dm.png*
+----original_image.png
+----extracted_graph_red1.gpickle
+----distance_map_dm.png
 ```
 
 I the */data/results* folder I have prepared several such folders (e.g. *tracheole1*, *tracheole2* and *tracheole3*) to test *GeGUI*. If you want to load and process for example the graph extracted from *tracheole1.png*, run
