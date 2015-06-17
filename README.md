@@ -118,13 +118,13 @@ In the following we detail how to get these three things on Linux, Windows and M
 ________________________________________________________
 
 # Extracting network data using the NEAT framework 
-The network extraction and analysis tool (NEAT) is intended for the extraction of network data from images which can later be analyzed easily.
+The network extraction and analysis tool (*NEAT*) is intended for the extraction of network data from images which can later be analyzed easily.
 The workflow is broken down into four steps represented by four processing scripts
 
-1. Segment the original image into foreground and background and therefore create a binary image using binarize.py
-2. Extract the network from the binary image unsing neat.py
-3. Optional: manually correct errors in the network or remove artifacts using the graph-edit GUI gegui.py
-4. Analyze basic characteristics of the network with analyze.py
+1. Segment the original image into foreground and background and therefore create a binary image using *binarize.py*
+2. Extract the network from the binary image unsing *neat.py*
+3. Optional: manually correct errors in the network or remove artifacts using the graph-edit GUI *gegui.py*
+4. Analyze basic characteristics of the network with *analyze.py*
 
 ## binarize
 To get from a grayscale to a suitable binary image can be tricky. I have provided rudimentary scripts which do some contrast improvement and thresholding for different kinds of images (*binarize_tracheole.py* for tracheoles, *binarize_crack.py* for cracks and *binarize_leaf.py* for leaves). 
@@ -170,14 +170,14 @@ python binarize_leaf.py ../data/originals/leaf1.png -g 5 -eq 11 -r 0.5 -o 25 -s 
 --------------------------------------------------
 
 ## neat
-Extraction of network data is done with the *neat.py* script. NEAT takes the path to a binary (black and white) image as required command line argument and extracts a graph (networkx graph-object) from the largest connected component in the image. The format of the binary image needs to be pixel based (vector graphics need to be converted first) but other than that, [all formats supported by the PIL library](http://pillow.readthedocs.org/en/latest/handbook/image-file-formats.html) are possible.
-NEAT's behaviour can be modified by several parameters and switches:
+Extraction of network data is done with the *neat.py* script. *NEAT* takes the path to a binary (black and white) image as required command line argument and extracts a graph (networkx graph-object) from the largest connected component in the image. The format of the binary image needs to be pixel based (vector graphics need to be converted first) but other than that, [all formats supported by the PIL library](http://pillow.readthedocs.org/en/latest/handbook/image-file-formats.html) are possible.
+*NEAT*'s behaviour can be modified by several parameters and switches:
 - **-source** Required argument. The path to the image you want to process, for example *../data/originals/tracheole3.png*. Either a relative path to the processing script or a total path works.
 - **-help** displays all available options with a short description in the command line.
-- **-dest** (default = **source**) If you want to save NEAT's results in a different folder than **source**, specify the **dest** argument. If for example you want to process *leaf1.png* from the */data/originals* folder but save the resulting network in the */neat* folder, specify **-dest** *../neat/*. Either a relative path to the processing script or a total path works.
-- **-v** (default = False) NEAT is run via the command line but by default it will not produce any command line output to avoid spam. If you enable verbosity by specifying **v**, NEAT will report on its current processing state and output some information on how long it took the script to complete the previous processing step.
-- **-d** (default = False) If something goes wrong, NEAT crackes or the output is not what you expected, it might help to enable the debugging mode by specifying **d**. This will further increase the verposity of the script. Moreover, NEAT will save visualizations of intermediate processing steps so you can have a look and maybe figure out what is going wrong. The visualizations include a plot of the extracted contours, the triangulation and an overlay of the contours, triangulation, distance map and extracted network.
-- **-plt** (default = False) Plotting and saving images (especially really large ones like NEAT is accustomed to dealing with) takes a lot of time. This is why by default visualization of the extracted networks is disabled. If you want to see what NEAT extracted, specify **plt**. By default, NEAT will save plots in *.pdf* format. This can take ages for graphs with more than ~1000 nodes. If you want to change the plot file format, specify the **fformat** argument.
+- **-dest** (default = **source**) If you want to save *NEAT*'s results in a different folder than **source**, specify the **dest** argument. If for example you want to process *leaf1.png* from the */data/originals* folder but save the resulting network in the */neat* folder, specify **-dest** *../neat/*. Either a relative path to the processing script or a total path works.
+- **-v** (default = False) *NEAT* is run via the command line but by default it will not produce any command line output to avoid spam. If you enable verbosity by specifying **v**, *NEAT* will report on its current processing state and output some information on how long it took the script to complete the previous processing step.
+- **-d** (default = False) If something goes wrong, *NEAT* crackes or the output is not what you expected, it might help to enable the debugging mode by specifying **d**. This will further increase the verposity of the script. Moreover, NEAT will save visualizations of intermediate processing steps so you can have a look and maybe figure out what is going wrong. The visualizations include a plot of the extracted contours, the triangulation and an overlay of the contours, triangulation, distance map and extracted network.
+- **-plt** (default = False) Plotting and saving images (especially really large ones like *NEAT* is accustomed to dealing with) takes a lot of time. This is why by default visualization of the extracted networks is disabled. If you want to see what *NEAT* extracted, specify **plt**. By default, *NEAT* will save plots in *.pdf* format. This can take ages for graphs with more than ~1000 nodes. If you want to change the plot file format, specify the **fformat** argument.
 - **-fformat** (default = *.pdf*) File format of the plots if **plt** is enabled. To display all available formats for your platform, start a python interpreter (for example by typing 'python' in your terminal) and run
 
 ```python
@@ -224,14 +224,31 @@ python gegui.py ../data/results/tracheole1
 --------------------------------------------------
 
 ## analyze
+The *analyze.py* script is a very simple script that loads a graph, calculates some basic statistics of the graph and saves them to a text-file. The statistics are in no way complete and are just intended to give you a quick overview over the properties of the graph and enable you to sanity-check the results *NEAT* produced. To analyze your graph (currently reads only *.gpickle* format), run the script with the path to the graph as argument. If you for example want to analyze the graph of tracheole1 we already used in the *GeGUI* example, you need to run
+```
+python analyze.py ../data/results/tracheole1/tracheole1_graph_red1.gpickle
+```
+This command will have created a file called *tracheole1_network_statistics.txt* in the directory that holds the source-graph. As before, you can specify a separate target directory for the output via command line option. Therefore if we wanted to save the statistics file in the /data/results folder, we would need to run
+```
+python analyze.py ../data/results/tracheole1/tracheole1_graph_red1.gpickle ../data/results
+```
+The *analyze.py* script is made up of a series of functions that calculate each individual statistic. Each function then gets called once and writes its result to a textfile. It therefore is very easy to extend or adapt the script by adding new functions or removing existing functions. Just make sure you call your function at the end of the script and write the result into the file.
+The statistics calculated by the script as is are:
 
+* Number of junctions in the network. Every node that has more than two neighbors is considered to be a junction (also called branching point).
+* Number of tips in the network. Every node that has exactly one neighbor is considered to be a tip (also called endpoints).
+* Total length of the network: The total length is the sum over all individual edge-lengths. It therefore has the dimension \[pixels\].
+* Average edge length: The average edge length is the average of all individual edge-lengths. It therefore has the dimension \[pixels\].
+* Average edge radius: The average edge radius is the average of all individual edge-radii. It therefore has the dimension \[pixels\].
+* Total network area: The total network area is the sum of all individual edge-lengths times individual edge-radii. It therefore has the dimension \[pixels^2\].
+* Area of the convex hull of the network: If we consider all nodes within the networks to be a point cloud and then calculate the convex hull of this point cloud, this is the area of this convex hull. It therefore has the dimension \[pixels^2\].
+* Number of cycles in the network: A cycle in a network is a closed path. Here we do NOT calculate all possible closed paths but calculate the size of the cycle basis of the network. A basis for cycles of a network is a minimal collection of cycles such that any cycle in the network can be written as a sum of cycles in the basis. Therefore the cycle basis of the olympic rings has size 9 (5 rings + 4 overlaps).
 
 ### TODO
 - sort NEAT's options in a comprehensible way
 - refer to the methods paper as soon as it is in the ArXiv
 - implement an option to modify the node size in plots
 - specify how GeGUI selects the right files in a folder
-- describe the analyze script
 - add markdown example processings for binarize, neat and maybe also analyze including images
 - maybe add screenshots to geguis description
 
