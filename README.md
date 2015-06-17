@@ -1,10 +1,11 @@
 Disclaimer: The scripts and libraries uploaded in this project are intended to be a suite of tools for the extraction, manipulation and analysis of network data (graphs) from images. The scripts uploaded here are part of a methods paper detailing the algorithms used which is soon to be published.
-The original images used as examples in the paper can be found in the /data directory. The images represent a range of different use-cases for NEAt both from different research projects as well as with regards to the size of the networks they contain. They are ready to be processed without any further modifications.
+The original images used as examples in the paper can be found in the /data/originals directory. The images represent a range of different use-cases for *NEAT* both from different research projects as well as with regards to the size of the networks they contain. They are ready to be processed without any further modifications.
 
 # Setting up the NEAT framework
-The neat framework is a set of python scripts that make use of the python module *neat_helpers* and the cythonized library *C_neat_functions*. For neat to work you will need three things
+The *NEAT* framework is a set of python scripts that make use of the python module *neat_helpers.py* and the cythonized library *C_neat_functions.so*. For *NEAT* to work you will need three things
+
 1. a working installation of python 2.7 and pip
-2. the third party libraries utilized within NEAT (scipy, numpy, matplotlib, cython, networkx, scikit-image, opencv, pillow, shapely, meshpy)
+2. the third party libraries utilized within *NEAT* (scipy, numpy, matplotlib, cython, networkx, scikit-image, opencv, pillow, shapely, meshpy)
 3. a version of the C_neat_functions.pyx file compiled for your platform
 In the following we detail how to get these three things on Linux, Windows and MacOS platforms.
 
