@@ -19,6 +19,10 @@ The *NEAT* framework is a set of python scripts that make use of the python modu
 3. a version of the C_neat_functions.pyx file compiled for your platform
 In the following we detail how to get these three things on Linux, Windows and MacOS platforms.
 
+1. First ordered list item
+2. Another item
+⋅⋅* Unordered sub-list.
+
 ## Linux
 1. Python 2.7 should be installed by default, if it is not, your package manager most likely will provide it.
 	 You can get pip by running  
