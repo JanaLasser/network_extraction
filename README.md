@@ -6,16 +6,16 @@ The *NEAT* framework is a set of python scripts that make use of the python modu
 
 1. a working installation of python 2.7 and pip
 2. the third party libraries utilized within *NEAT* which are
-⋅⋅⋅ **scipy**: general scientific computing
-⋅⋅⋅ **numpy**: general scientific computing
-⋅⋅⋅ **matplotlib**: visualization
-⋅⋅⋅ **cython**: for translating python into C and compiling it
-⋅⋅⋅ **networkx**: to handle networks
-⋅⋅⋅ **scikit-image**: for image processing
-⋅⋅⋅ **opencv**: for image processing
-⋅⋅⋅ **pillow**: for image I/O
-⋅⋅⋅ **shapely**: for some geometry operations
-⋅⋅⋅ **meshpy**: for the triangulation
+⋅⋅* **scipy**: general scientific computing
+⋅⋅* **numpy**: general scientific computing
+⋅⋅* **matplotlib**: visualization
+⋅⋅* **cython**: for translating python into C and compiling it
+⋅⋅* **networkx**: to handle networks
+⋅⋅* **scikit-image**: for image processing
+⋅⋅* **opencv**: for image processing
+⋅⋅* **pillow**: for image I/O
+⋅⋅* **shapely**: for some geometry operations
+⋅⋅* **meshpy**: for the triangulation
 3. a version of the C_neat_functions.pyx file compiled for your platform
 In the following we detail how to get these three things on Linux, Windows and MacOS platforms.
 
