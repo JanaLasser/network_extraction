@@ -1,6 +1,16 @@
 Disclaimer: The scripts and libraries uploaded in this project are intended to be a suite of tools for the extraction, manipulation and analysis of network data (graphs) from images. The scripts uploaded here are part of a methods paper detailing the algorithms used which is soon to be published.
 The original images used as examples in the paper can be found in the /data/originals directory. The images represent a range of different use-cases for *NEAT* both from different research projects as well as with regards to the size of the networks they contain. They are ready to be processed without any further modifications.
 
+#Introduction and Overview
+The ultimate goal of the *NEAT* framework is to make images of networks processable by computers. Therefore we want to have a pixel based image as input, as output we want a representation of the network visible in the image that retains as much information about the original network as possible.
+*NEAT* achives this by first segmenting the image and then vectorizing the network and then extracting information. The information we extract is
+* First and foremost the graph of the network. We find the crossings (nodes) and connections between crossings (edges) and therefore extract information about the neighborhood relations, the *topology* of the network.
+* We also extract the coordinates of all nodes which enables us to embed them into space. We therefore extract information about the *geometry* of the network.
+* Last but not least we track the radii of the edges in the extraction process. Therefore every edge has a radius which can be identified with its conductivity. 
+
+In the following we will first provide detailed instructions on how to install *NEAT* on several platforms. Then we describe the functionality and options of each of the four scripts that make up the *NEAT* framework.
+
+
 # Setting up the NEAT framework
 The *NEAT* framework is a set of python scripts that make use of the python module *neat_helpers.py* and the cythonized library *C_neat_functions.so*. For *NEAT* to work you will need three things
 
