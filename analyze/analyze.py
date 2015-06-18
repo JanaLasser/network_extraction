@@ -93,7 +93,7 @@ def AreaOfConvexHull(G):
 def NumberOfCycles(G):
     return len(nx.cycle_basis(G))
 
-f = open(join(dest,'network_statistics_' + graph_name + '.txt'), 'w')
+f = open(join(dest,graph_name + '_network_statistics' + '.txt'), 'w')
 f.write('*** Statistics for ' + graph_name + ' ***\n\n')
 f.write('Number of junctions:\t %d\n'%NumberOfJunctions(G))
 f.write('Number of tips:\t\t %d\n'%NumberOfTips(G))
