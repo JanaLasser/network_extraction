@@ -37,8 +37,8 @@ from C_neat_functions import CbuildTriangles, CbruteforcePruning
 from C_neat_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
-markersize = 0
-edgesize = 1
+markersize = 2
+edgesize = 0.5
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
 #functions used in the vectorize.py script
@@ -470,7 +470,6 @@ def createGraph(adjacency_matrix,all_triangles,height):
 
 
 def removeRedundantNodes(G,verbose,mode):
-    print G.edges(data=True)[0]
     '''
         Removes a specified number of redundant nodes from the graph. Nodes
         should be removed in place but the graph is returned nevertheless.
@@ -514,8 +513,8 @@ def removeRedundantNodes(G,verbose,mode):
                 c1 = G.edge[node][n1]['conductivity']
                 c2 = G.edge[node][n2]['conductivity']
                 #TODO: figure out why length can be zero
-                if length == 0: radius = 1
-                else: radius = (c1*w1+c2*w2)/length
+                if length == 0: length = 1
+                radius = (c1*w1+c2*w2)/length
                 G.add_edge(n1,n2, weight = length, conductivity = radius )
                 if n1 not in nodelist and n2 not in nodelist:
                     nodelist.update({node:node})
@@ -578,7 +577,7 @@ def drawGraphTriangulation(h,G,triangles,image_name,dest,distance_map,\
     widths = np.array([G[e[0]][e[1]]['conductivity'] for e in G.edges()])*scale
     widths = 15./(np.amax(widths)*13)*widths
 
-    nx.draw_networkx_edges(G, pos=pos, width=widths,edgecolor='DarkSlateGray',
+    nx.draw_networkx_edges(G, pos=pos, width=widths,edgecolor='DimGray',
                            alpha=0.4)
     
     colors = {3:"green",2:"green",1:"green"}
@@ -592,7 +591,7 @@ def drawGraphTriangulation(h,G,triangles,image_name,dest,distance_map,\
             c = colors[typ]
             plt.plot(x,y,'+',color=c,markersize=0.3,mec=c)       
     plt.savefig(join(dest,image_name + "_graph_and_triangulation" + "." + \
-                figure_format), dpi=dpi)
+                figure_format,bbox_inches='tight'), dpi=dpi)
     
 
   
@@ -617,14 +616,17 @@ def _drawGraph(G,verbose):
     for k in G.node.keys():
         pos[k] = (G.node[k]['x']*scale, G.node[k]['y']*scale)
     
-    widths = np.array([G[e[0]][e[1]]['conductivity'] for e in G.edges()])*scale
+    
+    
+    edgelist = [(e[0],e[1]) for e in G.edges(data=True) if e[2]['weight']<1000]
+    widths = np.array([G[e[0]][e[1]]['conductivity'] for e in edgelist])*scale
     widths = 15./(np.amax(widths)*2)*widths*edgesize
 
-    nx.draw_networkx_edges(G, pos=pos, width=widths,edgecolor='DarkSlateGray',
-                           alpha=1)
+    nx.draw_networkx_edges(G, pos=pos,width=widths,edge_color='DarkSlateGray',\
+        edgelist=edgelist)
 
     #TODO: find out why degrees can be > 3!    
-    color_dict = {3:"orange",2:"purple",1:"red",4:"blue",5:"blue",6:"blue"}
+    color_dict = {3:"orange",2:"purple",1:"orange",4:"blue",5:"blue",6:"blue"}
     size_dict = {3:markersize,2:0,1:markersize}
     colors = []
     sizes = []
@@ -635,7 +637,7 @@ def _drawGraph(G,verbose):
         colors.append(color_dict[degree])
         sizes.append(size_dict[degree])
     
-    nx.draw_networkx_nodes(G, pos=pos,alpha=0.8,node_size=sizes,\
+    nx.draw_networkx_nodes(G, pos=pos,alpha=1,node_size=sizes,\
         node_color=colors,linewidths=0,node_shape='o')            
     
     if verbose:
@@ -661,7 +663,7 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose,plot,figure_format,dpi,\
         plt.clf()
         _drawGraph(G,verbose)          
         plt.savefig(join(dest,image_name + "_graph_" + mode + \
-            "." + figure_format),dpi=dpi)
+            "." + figure_format),dpi=dpi,bbox_inches='tight')
     figure_save = time.clock()
 
     save_function_dict = {'gpickle':[nx.write_gpickle, '.gpickle'],
