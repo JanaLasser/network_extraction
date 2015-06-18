@@ -466,7 +466,7 @@ def createGraph(adjacency_matrix,all_triangles,height):
     attr = dict(zip(np.arange(len(y)),y))
     nx.set_node_attributes(G,'y',attr)
     
-    return nx.connected_component_subgraphs(G)[0]
+    return G
 
 
 def removeRedundantNodes(G,verbose,mode):
