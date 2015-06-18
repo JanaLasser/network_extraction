@@ -1,24 +1,24 @@
 Disclaimer: The scripts and libraries uploaded in this project are intended to be a suite of tools for the extraction, manipulation and analysis of network data (graphs) from images. The scripts uploaded here are part of a methods paper detailing the algorithms used which is soon to be published.
-The original images used as examples in the paper can be found in the /data/originals directory. The images represent a range of different use-cases for *NEAT* both from different research projects as well as with regards to the size of the networks they contain. They are ready to be processed without any further modifications.
+The original images used as examples in the paper can be found in the /data/originals directory. The images represent a range of different use-cases for *NET* both from different research projects as well as with regards to the size of the networks they contain. They are ready to be processed without any further modifications.
 
 #Introduction and Overview
-The ultimate goal of the *NEAT* framework is to make images of networks processable by computers. Therefore we want to have a pixel based image as input, as output we want a representation of the network visible in the image that retains as much information about the original network as possible.
-*NEAT* achives this by first segmenting the image and then vectorizing the network and then extracting information. The information we extract is
+The ultimate goal of the *NET* framework is to make images of networks processable by computers. Therefore we want to have a pixel based image as input, as output we want a representation of the network visible in the image that retains as much information about the original network as possible.
+*NET* achives this by first segmenting the image and then vectorizing the network and then extracting information. The information we extract is
 * First and foremost the graph of the network. We find the crossings (nodes) and connections between crossings (edges) and therefore extract information about the neighborhood relations, the *topology* of the network.
 * We also extract the coordinates of all nodes which enables us to embed them into space. We therefore extract information about the *geometry* of the network.
 * Last but not least we track the radii of the edges in the extraction process. Therefore every edge has a radius which can be identified with its conductivity. 
 
-In the following we will first provide detailed instructions on how to install *NEAT* on several platforms. Then we describe the functionality and options of each of the four scripts that make up the *NEAT* framework.
+In the following we will first provide detailed instructions on how to install *NET* on several platforms. Then we describe the functionality and options of each of the four scripts that make up the *NET* framework.
 
 
-# Setting up the NEAT framework
-The *NEAT* framework is a set of python scripts that make use of the python module *neat_helpers.py* and the cythonized library *C_neat_functions.so*. For *NEAT* to work you will need three things
+# Setting up the NET framework
+The *NET* framework is a set of python scripts that make use of the python module *net_helpers.py* and the cythonized library *C_net_functions.so*. For *NET* to work you will need three things
 
 1. a working installation of python 2.7 and pip
-2. the third party libraries utilized within *NEAT*
-3. a version of the C_neat_functions.pyx file compiled for your platform
+2. the third party libraries utilized within *NET*
+3. a version of the C_net_functions.pyx file compiled for your platform
 
-List of libraries *NEAT* depends on:
+List of libraries *NET* depends on:
 * **scipy**: general scientific computing
 * **numpy**: general scientific computing
 * **matplotlib**: visualization
@@ -51,11 +51,11 @@ In the following we detail how to get these three things on Linux, Windows and M
 	Repeat this process with scipy, matplotlib, cython, scikit-image, pillow, meshpy and shapely. 
 	To install opencv, follow the instructions detailed [here](http://docs.opencv.org/doc/tutorials/introduction/linux_install/linux_install.html).
 
-3. To compile your own *C_neat_functions.so* file, navigate to the /neat directory and run
+3. To compile your own *C_net_functions.so* file, navigate to the /net directory and run
 	```
-	python setup_C_neat_functions.py build_ext --inplace
+	python setup_C_net_functions.py build_ext --inplace
 	```
-	This should create two files called *C_neat_functions.so* and *C_neat_functions.c*, the first you need, the latter you can safely delete.
+	This should create two files called *C_net_functions.so* and *C_net_functions.c*, the first you need, the latter you can safely delete.
 
 --------------------------------------------------
 
@@ -80,11 +80,11 @@ In the following we detail how to get these three things on Linux, Windows and M
 	```
 	for all the packages you downloaded.
 
-3. Navigate to the folder /neat and run
+3. Navigate to the folder /NET and run
 	```
-	python setup_C_neat_functions.py build_ext --inplace
+	python setup_C_net_functions.py build_ext --inplace
 	```
-	A file named *C_neat_functions.pyc* should have bean created in the \neat directory
+	A file named *C_net_functions.pyc* should have bean created in the \NET directory
 	Compilation might be abortet with the message "error: Unable to find vcvarsall.bat"
 	There is a relatively easy fix for that (based on [this stack overflow post](http://stackoverflow.com/questions/2817869/error-unable-to-find-vcvarsall-bat)):
 	Install Visual studio 2013 and set the environment variable by running
@@ -93,7 +93,7 @@ In the following we detail how to get these three things on Linux, Windows and M
 	```
 	Rerun
 	```
-	python setup_c_neat_functions.py build_ext --inplace
+	python setup_c_net_functions.py build_ext --inplace
 	```
 	If it still does not work, good luck!
 
@@ -119,20 +119,20 @@ In the following we detail how to get these three things on Linux, Windows and M
 	Repeat this process with scipy, matplotlib, cython, scikit-image, pillow, meshpy and shapely. 
 	To install opencv, follow the instructions detailed [here](http://tilomitra.com/opencv-on-mac-osx/).
 
-3. Navigate to the folder /neat and run
+3. Navigate to the folder /NET and run
 	```
-	python setup_C_neat_functions.py build_ext --inplace
+	python setup_C_net_functions.py build_ext --inplace
 	```
-	This should create two files called *C_neat_functions.so* and *C_neat_functions.c*, the first you need, the latter you can safely delete.
+	This should create two files called *C_net_functions.so* and *C_net_functions.c*, the first you need, the latter you can safely delete.
 
 ________________________________________________________
 
-# Extracting network data using the NEAT framework 
-The network extraction and analysis tool (*NEAT*) is intended for the extraction of network data from images which can later be analyzed easily.
+# Extracting network data using the NET framework 
+The network extraction and analysis tool (*NET*) is intended for the extraction of network data from images which can later be analyzed easily.
 The workflow is broken down into four steps represented by four processing scripts
 
 1. Segment the original image into foreground and background and therefore create a binary image using *binarize.py*
-2. Extract the network from the binary image unsing *neat.py*
+2. Extract the network from the binary image unsing *net.py*
 3. Optional: manually correct errors in the network or remove artifacts using the graph-edit GUI *gegui.py*
 4. Analyze basic characteristics of the network with *analyze.py*
 
@@ -179,15 +179,15 @@ python binarize_leaf.py ../data/originals/leaf1.png -g 5 -eq 11 -r 0.5 -o 25 -s 
 
 --------------------------------------------------
 
-## neat
-Extraction of network data is done with the *neat.py* script. *NEAT* takes the path to a binary (black and white) image as required command line argument and extracts a graph (networkx graph-object) from the largest connected component in the image. The format of the binary image needs to be pixel based (vector graphics need to be converted first) but other than that, [all formats supported by the PIL library](http://pillow.readthedocs.org/en/latest/handbook/image-file-formats.html) are possible.
-*NEAT*'s behaviour can be modified by several parameters and switches:
+## NET
+Extraction of network data is done with the *net.py* script. *NET* takes the path to a binary (black and white) image as required command line argument and extracts a graph (networkx graph-object) from the largest connected component in the image. The format of the binary image needs to be pixel based (vector graphics need to be converted first) but other than that, [all formats supported by the PIL library](http://pillow.readthedocs.org/en/latest/handbook/image-file-formats.html) are possible.
+*NET*'s behaviour can be modified by several parameters and switches:
 - **-source** Required argument. The path to the image you want to process, for example *../data/originals/tracheole3.png*. Either a relative path to the processing script or a total path works.
 - **-help** displays all available options with a short description in the command line.
-- **-dest** (default = **source**) If you want to save *NEAT*'s results in a different folder than **source**, specify the **dest** argument. If for example you want to process *leaf1.png* from the */data/originals* folder but save the resulting network in the */neat* folder, specify **-dest** *../neat/*. Either a relative path to the processing script or a total path works.
-- **-v** (default = False) *NEAT* is run via the command line but by default it will not produce any command line output to avoid spam. If you enable verbosity by specifying **v**, *NEAT* will report on its current processing state and output some information on how long it took the script to complete the previous processing step.
-- **-d** (default = False) If something goes wrong, *NEAT* crackes or the output is not what you expected, it might help to enable the debugging mode by specifying **d**. This will further increase the verposity of the script. Moreover, NEAT will save visualizations of intermediate processing steps so you can have a look and maybe figure out what is going wrong. The visualizations include a plot of the extracted contours, the triangulation and an overlay of the contours, triangulation, distance map and extracted network.
-- **-plt** (default = False) Plotting and saving images (especially really large ones like *NEAT* is accustomed to dealing with) takes a lot of time. This is why by default visualization of the extracted networks is disabled. If you want to see what *NEAT* extracted, specify **plt**. By default, *NEAT* will save plots in *.pdf* format. This can take ages for graphs with more than ~1000 nodes. If you want to change the plot file format, specify the **fformat** argument.
+- **-dest** (default = **source**) If you want to save *NET*'s results in a different folder than **source**, specify the **dest** argument. If for example you want to process *leaf1.png* from the */data/originals* folder but save the resulting network in the */NET* folder, specify **-dest** *../NET/*. Either a relative path to the processing script or a total path works.
+- **-v** (default = False) *NET* is run via the command line but by default it will not produce any command line output to avoid spam. If you enable verbosity by specifying **v**, *NET* will report on its current processing state and output some information on how long it took the script to complete the previous processing step.
+- **-d** (default = False) If something goes wrong, *NET* crackes or the output is not what you expected, it might help to enable the debugging mode by specifying **d**. This will further increase the verposity of the script. Moreover, NET will save visualizations of intermediate processing steps so you can have a look and maybe figure out what is going wrong. The visualizations include a plot of the extracted contours, the triangulation and an overlay of the contours, triangulation, distance map and extracted network.
+- **-plt** (default = False) Plotting and saving images (especially really large ones like *NET* is accustomed to dealing with) takes a lot of time. This is why by default visualization of the extracted networks is disabled. If you want to see what *NET* extracted, specify **plt**. By default, *NET* will save plots in *.pdf* format. This can take ages for graphs with more than ~1000 nodes. If you want to change the plot file format, specify the **fformat** argument.
 - **-fformat** (default = *.pdf*) File format of the plots if **plt** is enabled. To display all available formats for your platform, start a python interpreter (for example by typing 'python' in your terminal) and run
 
 ```python
@@ -205,11 +205,11 @@ plt.gcf().canvas.get_supported_filetypes()
 
 If you want to extract a graph from the image */data/binaries/tracheole6.png*, set pruning to 5, save all redundant nodes, enable verbosity and additionally save a visualization of the graph in *.png* format with a resolution of 2000 dpi, run
 ```
-python neat.py ../data/binaries/tracheole6.png -p 5 -r 2 -v -plt -fformat png -dpi 2000
+python net.py ../data/binaries/tracheole6.png -p 5 -r 2 -v -plt -fformat png -dpi 2000
 ```
 If you have a shitty binary that you want to smooth and clear up (like */data/binaries/tracheole8.png*), you want no pruning, are content with only some redundant nodes, want to have a visualization of intermediate steps, verbosity and a distance map but no plot of the final graph, then run
 ``` 
-python neat.py ../data/binaries/tracheole8.png -s 2 -m 1000 -p 0 -r 1 -d -v -dm
+python net.py ../data/binaries/tracheole8.png -s 2 -m 1000 -p 0 -r 1 -d -v -dm
 ```
 
 --------------------------------------------------
@@ -234,7 +234,7 @@ python gegui.py ../data/results/tracheole1
 --------------------------------------------------
 
 ## analyze
-The *analyze.py* script is a very simple script that loads a graph, calculates some basic statistics of the graph and saves them to a text-file. The statistics are in no way complete and are just intended to give you a quick overview over the properties of the graph and enable you to sanity-check the results *NEAT* produced. To analyze your graph (currently reads only *.gpickle* format), run the script with the path to the graph as argument. If you for example want to analyze the graph of tracheole1 we already used in the *GeGUI* example, you need to run
+The *analyze.py* script is a very simple script that loads a graph, calculates some basic statistics of the graph and saves them to a text-file. The statistics are in no way complete and are just intended to give you a quick overview over the properties of the graph and enable you to sanity-check the results *NET* produced. To analyze your graph (currently reads only *.gpickle* format), run the script with the path to the graph as argument. If you for example want to analyze the graph of tracheole1 we already used in the *GeGUI* example, you need to run
 ```
 python analyze.py ../data/results/tracheole1/tracheole1_graph_red1.gpickle
 ```
@@ -255,11 +255,11 @@ The statistics calculated by the script as is are:
 * Number of cycles in the network: A cycle in a network is a closed path. Here we do NOT calculate all possible closed paths but calculate the size of the cycle basis of the network. A basis for cycles of a network is a minimal collection of cycles such that any cycle in the network can be written as a sum of cycles in the basis. Therefore the cycle basis of the olympic rings has size 9 (5 rings + 4 overlaps).
 
 ### TODO
-- sort NEAT's options in a comprehensible way
+- sort NET's options in a comprehensible way
 - refer to the methods paper as soon as it is in the ArXiv
 - implement an option to modify the node size in plots
 - specify how GeGUI selects the right files in a folder
-- add markdown example processings for binarize, neat and maybe also analyze including images
+- add markdown example processings for binarize, NET and maybe also analyze including images
 - maybe add screenshots to geguis description
 
 

@@ -34,7 +34,7 @@ from skimage.morphology import binary_opening, binary_closing, disk
 from skimage.morphology import remove_small_objects
 	
 #custom helper functions
-import neat_helpers as nh
+import net_helpers as nh
 
 """
 Argument handling:
@@ -147,8 +147,8 @@ Optional: distance_map -dm
 
 """				
 
-parser = argparse.ArgumentParser(description='Neat (Network Extraction and '\
-    + 'Analysis Tool): a program that ' +\
+parser = argparse.ArgumentParser(description='Net (Network Extraction '\
+    + 'Tool): a program that ' +\
     'extracts network information from a binary image containing ribbon-like,'\
     + ' connected shapes.\nCopyright (C) 2015 Jana Lasser')
 
@@ -214,7 +214,7 @@ graph_format = args.graph_format
 dpi = args.resolution                                                          #specifies resolution of plots (will be ignored if figure format is pdf)               
 save_distance_map = args.distance_map                                          #enables saving of the euclidean distance map
 
-pa = "Neat> "                                                                  #preamble
+pa = "Net> "                                                                  #preamble
 
 image_name = ntpath.basename(image_source).split('.')[0]
 if dest == None:

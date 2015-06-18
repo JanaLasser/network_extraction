@@ -9,7 +9,7 @@ Created on Thu Jan 22 14:36:58 2015
 Copyright (C) 2015 Jana Lasser GPL-3.0
 '''
 
-#python setup_C_neat_functions.py build_ext --inplace
+#python setup_C_net_functions.py build_ext --inplace
 
 from libc.math cimport sqrt
 from libc.math cimport round

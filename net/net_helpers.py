@@ -33,8 +33,8 @@ from PIL import Image
 import cv2
 
 #custom classes and functions from the cythonized helper library
-from C_neat_functions import CbuildTriangles, CbruteforcePruning
-from C_neat_functions import CcreateTriangleAdjacencyMatrix, Cpoint
+from C_net_functions import CbuildTriangles, CbruteforcePruning
+from C_net_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
 markersize = 2
