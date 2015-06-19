@@ -37,7 +37,6 @@ from C_net_functions import CbuildTriangles, CbruteforcePruning
 from C_net_functions import CcreateTriangleAdjacencyMatrix, Cpoint
 
 #global switches
-markersize = 2
 edgesize = 0.5
 plt.ioff()                                                                     #turn off matplotlib interactive mode, we safe everything we plot anyways
 
@@ -595,7 +594,7 @@ def drawGraphTriangulation(h,G,triangles,image_name,dest,distance_map,\
     
 
   
-def _drawGraph(G,verbose):
+def _drawGraph(G,verbose,n_size):
     '''
         Draws the leaf network using the thickness-data stored in the edges
         edges of the graph and the coordinates stored in the nodes.
@@ -626,25 +625,22 @@ def _drawGraph(G,verbose):
         edgelist=edgelist)
 
     #TODO: find out why degrees can be > 3!    
-    color_dict = {3:"orange",2:"purple",1:"orange",4:"blue",5:"blue",6:"blue"}
-    size_dict = {3:markersize,2:0,1:markersize}
+    color_dict = {3:"orange",2:"purple",1:"red"}
     colors = []
-    sizes = []
     for node in G.nodes():
         degree = nx.degree(G,node)
         if degree > 3:
             degree = 3
         colors.append(color_dict[degree])
-        sizes.append(size_dict[degree])
     
-    nx.draw_networkx_nodes(G, pos=pos,alpha=1,node_size=sizes,\
+    nx.draw_networkx_nodes(G, pos=pos,alpha=1,node_size=n_size,\
         node_color=colors,linewidths=0,node_shape='o')            
     
     if verbose:
         print "\t from _drawGraph: drawing took %1.2f sec"%(time.clock()-start)
  
-def drawAndSafe(G,image_name,dest,redundancy,verbose,plot,figure_format,dpi,\
-                graph_format):
+def drawAndSafe(G,image_name,dest,parameters,verbose,plot,figure_format,dpi,\
+                graph_format,n_size):
     '''
     Draws a graph calling the helper function _drawGraph and saves it at
     destination "dest" with the name "image_name" + "_graph"
@@ -655,15 +651,17 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose,plot,figure_format,dpi,\
         image_name: string, name of the file saved plus added "_graph"
         extension dest: string, destination where the drawn graph will be saved
     '''
-    start = time.clock()    
-    if redundancy == 0: mode = "red0"   
-    elif redundancy == 1: mode = "red1"
-    else: mode = "red2"   
+    start = time.clock() 
+    graph_name = image_name + '_graph'
+    for key,value in zip(parameters.keys(),parameters.values()):
+        graph_name += '_' + key + str(value)    
+
     if plot:
         plt.clf()
-        _drawGraph(G,verbose)          
-        plt.savefig(join(dest,image_name + "_graph_" + mode + \
-            "." + figure_format),dpi=dpi,bbox_inches='tight')
+        _drawGraph(G,verbose,n_size)          
+        plt.savefig(join(dest,graph_name + "." + figure_format), \
+            dpi=dpi,bbox_inches='tight')
+        
     figure_save = time.clock()
 
     save_function_dict = {'gpickle':[nx.write_gpickle, '.gpickle'],
@@ -676,8 +674,7 @@ def drawAndSafe(G,image_name,dest,redundancy,verbose,plot,figure_format,dpi,\
                           'multiline_adjlist': [nx.write_multiline_adjlist,'.adjlist'],
                           'gexf': [nx.write_gexf,'.gexf'],
                           'pajek': [nx.write_pajek,'.net']}
-    
-    graph_name = image_name + '_graph_' + mode 
+
     writefunc = save_function_dict[graph_format][0]
     writeformat = save_function_dict[graph_format][1]
     if graph_format in save_function_dict:
@@ -774,7 +771,7 @@ def drawContours(height,contour_list,image_name,dest,figure_format,dpi):
         c.append((c[0][0],c[0][1]))
         c = np.asarray(c)
         plt.plot(c[0:,0],height-c[0:,1],color="black",marker="o", \
-                 markersize=1.5,mfc="FireBrick", mew = 0.1, alpha=0.7, \
+                 markersize=2,mfc="FireBrick", mew = 0.1, alpha=0.7, \
                  linewidth = 1)
                  
         #optional plotting of coordinates       

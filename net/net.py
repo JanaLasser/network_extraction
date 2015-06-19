@@ -138,6 +138,12 @@ Optional: resolution -dpi
         details in the networks. 
         Defaults to 500 dpi which is a good compromise most of the times.
 
+Optional: node_size -n
+        Controls the size of the nodes displayed in the visualization of the
+        graph. If node_size = 0, only edges and no nodes are plotted.
+        Defaults to 4 which turned out to be a good value for nice plots of
+        tracheoles.
+
 Optional: distance_map -dm
         Enables saving of the euclidean distance map created during the
         network extraction process. This is useful if the network will later
@@ -195,6 +201,9 @@ parser.add_argument('-gformat','--graph_format',type=str,\
 parser.add_argument('-dpi', '--resolution', type=int, help='Sets dpi' +\
          '(dots per inch) for plots.', default = 500)
 
+parser.add_argument('-n', '--node_size', type=float, help='Sets size of nodes' +\
+         ' for plots.', default = 4)
+
 parser.add_argument('-dm', '--distance_map',action="store_true", \
             help = "Saves the distance map.",default=False)
                 
@@ -212,11 +221,16 @@ plot = args.plot                                                               #
 figure_format = args.figure_format                                             #specifies desired format to save plots
 graph_format = args.graph_format
 dpi = args.resolution                                                          #specifies resolution of plots (will be ignored if figure format is pdf)               
+n_size = args.node_size
 save_distance_map = args.distance_map                                          #enables saving of the euclidean distance map
 
-pa = "Net> "                                                                  #preamble
+parameters = {'r':redundancy, 'p':order}
+
+pa = "Net> "                                                                   #preamble
 
 image_name = ntpath.basename(image_source).split('.')[0]
+image_name = image_name.split('_binary')[0]
+
 if dest == None:
     dest = image_source.split(image_name)[0]
 if verbose:
@@ -244,7 +258,7 @@ distance_map = nh.cvDistanceMap(image).astype(np.int)                          #
 height,width = distance_map.shape
 if save_distance_map:
     scipy.misc.toimage(distance_map, cmin=0, cmax=255)\
-              .save(join(dest,image_name + "_dm.png"))                             #save the distance map in case we need it later
+              .save(join(dest,image_name + "_dm.png"))                         #save the distance map in case we need it later
 
 if debug:   
     scipy.misc.imsave(join(dest,image_name + "_processed.png"),image)          #debug output   
@@ -262,8 +276,8 @@ Contours:
           of Dominant Pointson Digital Curve. PAMI 11 8, pp 859-872 (1989))
         - Find the longest contour within the set of contours
 """
-raw_contours = nh.getContours(image)							     #Extract raw contours.   
-flattened_contours = nh.flattenContours(raw_contours)       			     #Flatten nested contour list
+raw_contours = nh.getContours(image)							               #Extract raw contours.   
+flattened_contours = nh.flattenContours(raw_contours)       			       #Flatten nested contour list
 
 if debug:                                                                      #debug output
     print pa + "\tContours converted, we have %i contour(s)."\
@@ -275,9 +289,9 @@ if debug:                                                                      #
     nh.drawContours(height,flattened_contours,image_name,dest,\
             figure_format,dpi)
 
-longest_index = 0											     #Position of longest contour.
-longest_length = 0										     #Length of longest contour.
-for c in xrange(len(flattened_contours)):						     #Find index of longest contour.
+longest_index = 0											                   #Position of longest contour.
+longest_length = 0										                       #Length of longest contour.
+for c in xrange(len(flattened_contours)):						               #Find index of longest contour.
     if(len(flattened_contours[c])>longest_length):
         longest_length = len(flattened_contours[c])
         longest_index = c
@@ -301,18 +315,18 @@ for c in flattened_contours:
         p[1] = p[1] + 0.1*np.random.rand()
    			     
 mesh_points = flattened_contours[longest_index]                                #First add longest contour to mesh.
-mesh_facets = nh.roundTripConnect(0,len(mesh_points)-1)				     #Create facets from the longest contour.
+mesh_facets = nh.roundTripConnect(0,len(mesh_points)-1)				           #Create facets from the longest contour.
 
-hole_points = []  										     #Every contour other than the longest needs an interiour point.
-for i in xrange(len(flattened_contours)):						     #Traverse all contours.   
+hole_points = []  										                       #Every contour other than the longest needs an interiour point.
+for i in xrange(len(flattened_contours)):						               #Traverse all contours.   
     curr_length = len(mesh_points)									
     if(i == longest_index):                                                    #Ignore longest contour.
         pass
-    else:					                                             #Find a point that lies within the contour.
+    else:					                                                   #Find a point that lies within the contour.
         contour = flattened_contours[i]
         interior_point = nh.getInteriorPoint(contour)        										
-        hole_points.append((interior_point[0],interior_point[1]))		     #Add point to list of interior points.
-        mesh_points.extend(contour)							     #Add contours identified by their interior points to the mesh.
+        hole_points.append((interior_point[0],interior_point[1]))		       #Add point to list of interior points.
+        mesh_points.extend(contour)							                   #Add contours identified by their interior points to the mesh.
         mesh_facets.extend(nh.roundTripConnect(curr_length,len(mesh_points)-1))#Add facets to the mesh
 
 if verbose:
@@ -329,11 +343,11 @@ Triangulation:
           the whole space between two boundaries. Allowing for quality meshing
           would also mess with the triangulation we want.
 """
-info = triangle.MeshInfo()									     #Create triangulation object.
-info.set_points(mesh_points)									     #Set points to be triangulated.
+info = triangle.MeshInfo()									                   #Create triangulation object.
+info.set_points(mesh_points)									               #Set points to be triangulated.
 if(len(hole_points) > 0):									     
-	info.set_holes(hole_points)                                              #Set holes (contours) to be ignored.
-info.set_facets(mesh_facets)       						          #Set facets.
+	info.set_holes(hole_points)                                                #Set holes (contours) to be ignored.
+info.set_facets(mesh_facets)       						                       #Set facets.
 triangulation = triangle.build(info,verbose=False,allow_boundary_steiner=False,#Build Triangulation.
        allow_volume_steiner=False,quality_meshing=False)
 
@@ -423,7 +437,7 @@ for t in triangles:
         isolated += 1
 if debug:
     nh.drawTriangulation(height,triangles,image_name,dest,distance_map, \
-            figure_format,dpi)                                                 #debug output
+            figure_format,dpi)                                           #debug output
     print pa + "\tTriangles defaulted to zero: %d"%default_triangles
     print pa + "\tTriangle types:"
     print pa + "\tjunction: %d, normal: %d, end: %d, isolated: %d"\
@@ -456,20 +470,21 @@ Redundant node removal
           graph
 """
 if redundancy == 2: 
-    nh.drawAndSafe(G,image_name,dest,2,verbose,plot,figure_format,dpi,\
-        graph_format)                                                          #draw and safe graph with redundant nodes
+    nh.drawAndSafe(G,image_name,dest,parameters,verbose,plot,figure_format,dpi,\
+        graph_format,n_size)                                                   #draw and safe graph with redundant nodes
 if debug:
     nh.drawGraphTriangulation(height,G,triangles,image_name,dest,\
         distance_map,figure_format, dpi)
 
-if redundancy == 1 or redundancy == 2:                                         #draw and safe graph with half redundant nodes
+if redundancy == 1:                                                            #draw and safe graph with half redundant nodes
     G = nh.removeRedundantNodes(G,verbose,1)
-    nh.drawAndSafe(G,image_name,dest,1,verbose,plot,figure_format,dpi,\
-        graph_format)
-    
-G = nh.removeRedundantNodes(G,verbose,0)                                       #draw and safe graph without redundant nodes
-nh.drawAndSafe(G,image_name,dest,0,verbose,plot,figure_format,dpi,\
-        graph_format)										
+    nh.drawAndSafe(G,image_name,dest,parameters,verbose,plot,figure_format,dpi,\
+        graph_format,n_size)
+ 
+if redundancy == 0:   
+    G = nh.removeRedundantNodes(G,verbose,0)                                   #draw and safe graph without redundant nodes
+    nh.drawAndSafe(G,image_name,dest,parameters,verbose,plot,figure_format,dpi,\
+            graph_format,n_size)										
 
 if verbose:
     step = time.clock()                                                        #progress output
