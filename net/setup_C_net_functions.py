@@ -11,6 +11,6 @@ import numpy
 
 setup(
     name = 'Cythonized functions',
-    ext_modules=cythonize("C_neat_functions.pyx"),
-    include_dirs=[numpy.get_include(),'/home/jana/PowerFolders/Papers/network_extraction/code/neat/C_neat_functions.pyx']
+    ext_modules=cythonize("C_net_functions.pyx"),
+    include_dirs=[numpy.get_include()]
 )    
