@@ -30,12 +30,14 @@ class GraphHandler(object):
         self.selected_nodes = state.selected_nodes
         self.distance_map = None
         for f in os.listdir(name_dict['source_path']):
-            if f.endswith('_dm.png'):
+            if f.split('.')[0].endswith('_dm'):
                 self.distance_map = IA.load(join(name_dict['source_path'],f))
         if self.distance_map == None:
-            print 'No corresponding distance map found (looking for "_dm.png")'
-            print 'GUI still functional but trying to create new nodes will '
-            print 'result in an error!'
+            print '\n'
+            print 'gegui> *** WARNING: No corresponding distance map found '
+            print 'gegui> (looking for "_dm") gegui still functional but trying'
+            print 'gegui> to create new nodes will result in an error! ***'
+            print '\n'
             IA.printHelp()
             
         self.init_PlotHandler(figure)

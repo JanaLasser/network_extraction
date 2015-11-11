@@ -42,16 +42,16 @@ class PlotHandler(object):
         
         for f in os.listdir(self.name_dict['source_path']):
             f_base = f.split('.')[0]
-            if f.endswith('.tif') or f_base.endswith('_orig'):
+            if f_base.endswith('_orig'):
                 self.background = IA.getImage(\
                         join(self.name_dict['source_path'],f))
         if self.background == None:
-            print "No corresponding original image found (looking for '.tif')"
-            print "Closing the GUI."
-            IA.printHelp()
-            sys.exit()
+            print "\n"
+            print "gegui> *** WARNING: No corresponding original image found "
+            print "gegui> (looking for '_orig'). Proceeding without overlay! ***"
+            print "\n"
             
-        self.height, self.width = self.background.shape  
+        #self.height, self.width = self.background.shape  
         self.node_list = {}
         self.edge_list = {}
         self.marked_list = {}
@@ -85,7 +85,8 @@ class PlotHandler(object):
             self.node_list.update({node:new_node})
         
         colormap = plt.get_cmap('hot')
-        plt.imshow(self.background,origin='lower',alpha=0.5,cmap=colormap)
+        if self.background != None:
+            plt.imshow(self.background,origin='lower',alpha=0.5,cmap=colormap)
         self.figure.canvas.draw_idle()
     
     def update_mode(self,text):     

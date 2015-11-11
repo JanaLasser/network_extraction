@@ -61,17 +61,16 @@ def printHelp():
              within the directory it is passed at start and will fail if these
              files can not be found. The files are:
              
-                 - a file with the ending "_red1.gpickle"
+                 - a file with the format ".gpickle",
                    this is the graph-object we will be working on
       
-                 - a file with the ending ".tif" or "_orig" 
-                  (format does not matter in this case)
+                 - a file with the ending "_orig" (format does not matter)
                   this is the original microscopy image which will be
                   superimposed onto the visualization of the graph to assist
                   with correct recognition of junctions
       
-                 - a file with the ending "_dm.png"
-                   this is the distance map of the binary used to create the
+                 - a file with the ending "_dm" (format does not matter)
+                   this is the distance-map of the binary used to create the
                    graph object it is needed in case we want to create new
                    nodes so the thickness of the nodes can automatically be
                    determined\n.
@@ -99,13 +98,18 @@ class InterActor(object):
                           
         self.graph = None                                                       #try to load the graph object
         for f in os.listdir(self.name_dict['source_path']):                     #look for a file that ends with '_red1.gpickle'
-            if f.endswith('_r1.gpickle'):                                     #this corresponds to a graph which has some redundant nodes left
+            if f.endswith('.gpickle'):                                          #this corresponds to a graph which has some redundant nodes left
                 self.graph = load(join(self.name_dict['source_path'],f))
         if self.graph == None:                                                  #if no suitable file is found, print an error message
             print 'gegui> No corresponding .gpickle-file found!'\
-            +' (looking for _r1.gpickle)\ngegui> Closing the GUI.'
+            +'\ngegui> Closing the GUI.'
             printHelp()                                                         #print the help message and exit the GUI
             sys.exit()
+        if len(self.graph.nodes()) > 1000:
+            print '\n'
+            print 'gegui> *** WARNING: Loaded graph is quite large (> 1000 nodes).'
+            print 'gegui> Large graphs slow down or even freeze gegui!. ***'
+            print '\n'
             
         self.selected_nodes = {}                                                #stores the keys of the currently selected nodes
         self.mode_list = []                                                     #list of currently switched on modes which will be displayed at the top of the figure
@@ -151,7 +155,7 @@ class InterActor(object):
         elif action == 'add':
             self.mode_list.append(text)
         else:
-            print "action not recognized!"          
+            print "gegui> action not recognized!"          
         s = ""
         for item in self.mode_list:
             s += item + "\n"
@@ -182,7 +186,7 @@ class InterActor(object):
             try:
                 self.CurrentStateSnapshot = self.state_stack[-1] 
             except IndexError:
-                print "no more undo-operations stored!"                  
+                print "gegui> no more undo-operations stored!"                  
             self.figure.clf()
             self.graph = self.CurrentStateSnapshot.graph
             self.selected_nodes = self.CurrentStateSnapshot.selected_nodes
@@ -191,29 +195,29 @@ class InterActor(object):
             self.GH = GraphHandler.GraphHandler(self.figure, self.name_dict,\
                                                 self.CurrentStateSnapshot)
         else:
-            print "no more undo-operations stored!"
+            print "gegui> no more undo-operations stored!"
     
     #main interaction loop    
     def edit_loop(self):
         self.print_help_message()
         while True:
-            cmd = raw_input("geGUI> ")
+            cmd = raw_input("gegui> ")
 
             #leave and ask if we want to save before leaving
             if cmd == 'x':                
                 while True:
-                    cmd2 = raw_input("Want to save before leaving? 'y/n' ")
+                    cmd2 = raw_input("gegui> Want to save before leaving? 'y/n' ")
                     if cmd2 == 'y':
-                        self.GH.save_graph(self.normalized)
+                        self.GH.save_graph()
                         return
                     elif cmd2 == 'n':
                         return
                     else:
-                        print 'input not recognized!'
+                        print 'gegui> input not recognized!'
              
             #save current progress
             elif cmd == 's':
-                self.GH.save_graph(self.digraph_on)
+                self.GH.save_graph()
             
             #enter manual graph manipulation mode
             elif cmd == 'm':
@@ -226,14 +230,14 @@ class InterActor(object):
                     self.normalized = True
                     self.update_state_stack()
                 else:
-                    print "already streamlined!"
+                    print "gegui> already streamlined!"
             
             #create digraph with the currently selected node as root
             elif cmd == 'digraph':
                 if len(self.selected_nodes) != 1:
                     print "Select exactly one node for di-Graph creation!"
                 elif self.digraph_on == True:
-                    print "Already a digraph!"
+                    print "gegui> Already a digraph!"
                 else:
                     self.GH.create_digraph(list(self.selected_nodes)[0]) 
                     self.digraph_on = True
@@ -245,7 +249,7 @@ class InterActor(object):
             
             #unknown user input
             else:
-                print "Command not recognized."
+                print "gegui> Command not recognized."
                 
     def print_help_message(self):
         print """
@@ -308,7 +312,7 @@ class InterActor(object):
         
         #show cylces in the graph
         if event.key == 'm':
-            print "looking for cycles"
+            print "gegui> looking for cycles"
             cycles = self.GH.detect_cycles()
             if cycles != None:
                 self.GH.PH.update_action("-m: Cycles marked")
@@ -317,18 +321,18 @@ class InterActor(object):
             else:
                 self.GH.PH.update_action("-m: No Cycles detected")
                 self.figure.canvas.draw()
-                print "no cycles detected!"
+                print "gegui> no cycles detected!"
         
         #clear the current node selection
         if event.key == 'a':
-            print "clearing current selection:"
+            print "gegui> clearing current selection:"
             self.GH.PH.update_action("-a: Selection cleared")
             self.clear_selection()
             self.processing_step()
          
         #delete currently selected nodes
         if event.key == 'd':
-            print "deleting selected nodes:"
+            print "gegui> deleting selected nodes:"
             self.GH.PH.update_action("-d: Selected nodes deleted")
             self.processing_step()
             for n in self.selected_nodes:
@@ -338,10 +342,10 @@ class InterActor(object):
                           
         #create a new edge between two selected nodes    
         if event.key == 'e':
-            print "connecting selected nodes"
+            print "gegui> connecting selected nodes"
             if len(self.selected_nodes) != 2:
                 self.GH.PH.update_action("-e: Not exactly two nodes selected!")
-                print('more than two nodes selected, aborting...')
+                print('gegui> more than two nodes selected, aborting...')
                 return
             n1 = self.selected_nodes.keys()[0]
             n2 = self.selected_nodes.keys()[1]
@@ -351,7 +355,7 @@ class InterActor(object):
         #undo the last action
         if event.key == 'z':
             self.GH.PH.update_action("-z: Undo...")
-            print "undoing last action"
+            print "gegui> undoing last action"
             self.undo()
             self.figure.canvas.draw()
             self.set_lim()            
