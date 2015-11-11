@@ -18,6 +18,17 @@
     If you find any bugs or have any suggestions, please contact me at
     jana.lasser@ds.mpg.de
 '''
+#path handling
+from os.path import join
+import os
+import sys
+
+print sys.argv[0]
+path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../net'))
+if not path in sys.path:
+    sys.path.insert(1, path)
+del path
+
 
 #standard imports
 from os.path import join
@@ -652,6 +663,8 @@ def drawAndSafe(G,image_name,dest,parameters,verbose,plot,figure_format,dpi,\
         extension dest: string, destination where the drawn graph will be saved
     '''
     start = time.clock() 
+    #failsafe to remove disconnected nodes
+    G = max(nx.connected_component_subgraphs(G), key=len)
     graph_name = image_name + '_graph'
     for key,value in zip(parameters.keys(),parameters.values()):
         graph_name += '_' + key + str(value)    
