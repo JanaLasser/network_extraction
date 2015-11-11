@@ -170,6 +170,7 @@ Now you have resolved the openCV dependency of the wrapper and you can install
 ```
 pip install pyopencv
 ```
+Important note: NET does only work with openCV versions 2.x as in 3.x the syntax of the find contour function changes.
 ________________________________________________________
 
 # Extracting network data using the NET framework 
@@ -300,6 +301,7 @@ The statistics calculated by the script as is are:
 * Number of cycles in the network: A cycle in a network is a closed path. Here we do NOT calculate all possible closed paths but calculate the size of the cycle basis of the network. A basis for cycles of a network is a minimal collection of cycles such that any cycle in the network can be written as a sum of cycles in the basis. Therefore the cycle basis of the olympic rings has size 9 (5 rings + 4 overlaps).
 
 ### TODO
+- package NET as a python package
 - sort NET's options in a comprehensible way
 - refer to the methods paper as soon as it is in the ArXiv
 - implement an option to modify the node size in plots
