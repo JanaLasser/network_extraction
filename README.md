@@ -49,7 +49,7 @@ In the following we detail how to get these three things on Linux, Windows and M
 	pip install networkx
 	```
 	Repeat this process with scipy, matplotlib, cython, scikit-image, pillow, meshpy and shapely. 
-	To install opencv, follow the instructions detailed [here](http://docs.opencv.org/doc/tutorials/introduction/linux_install/linux_install.html).
+	To install opencv, follow the instructions detailed [here](http://docs.opencv.org/doc/tutorials/introduction/linux_install/linux_install.html) or scroll to the bottom of the installation instructions for some notes on how to install openCV.
 
 3. To compile your own *C_net_functions.so* file, navigate to the /net directory and run
 	```
@@ -106,6 +106,7 @@ In the following we detail how to get these three things on Linux, Windows and M
 2. Download and install [Ubuntu](http://www.ubuntu.com/download/desktop/thank-you?country=DE&version=14.04.3&architecture=i386). Make sure your Ubuntu-VM has at least 4GB of RAM, else working with larger images/networks might cause swapping to hard drive and freezing of the computer.
 
 3. Proceed like described in the instructions for the Linux installation above. 
+
 Note: for a freshly installed linux, other dependecies might need to be resolved for the third party libraries to run, for example libgeos-dev and libpng3. In general if a dependency is missing for a library, the error occurring when trying to install said library will give you a hint of what is missing and you can simply get the dependency by running 
 '''
 pip install somedependency
@@ -132,7 +133,7 @@ pip install somedependency
 	pip install networkx
 	```
 	Repeat this process with scipy, matplotlib, cython, scikit-image, pillow, meshpy and shapely. 
-	To install opencv, follow the instructions detailed [here](http://tilomitra.com/opencv-on-mac-osx/).
+	To install opencv, follow the instructions detailed [here](http://tilomitra.com/opencv-on-mac-osx/) or scroll to the bottom of the installation instructions for some notes on how to install openCV.
 
 3. Navigate to the folder /NET and run
 	```
@@ -140,6 +141,35 @@ pip install somedependency
 	```
 	This should create two files called *C_net_functions.so* and *C_net_functions.c*, the first you need, the latter you can safely delete.
 
+--------------------------------------------------
+
+## Some notes on installing OpenCV for Linux
+OpenCV is a powerful library for image processing and computer vision written in C. For this application we use the python wrapper for the library. Nevertheless before we can wrap it in python, we first need to install the library itself. To do this, you can follow the instructions provided below.
+
+1. Download the [source files](http://sourceforge.net/projects/opencvlibrary/files/opencv-unix/2.4.10/opencv-2.4.10.zip/download) and unpack them.
+
+2. Run
+'''
+sudo apt-get install build-essential
+sudo apt-get install cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev
+sudo apt-get install python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libjasper-dev libdc1394-22-dev
+mkdir opencv2.4-make
+cd opencv2.4-make
+cmake -D CMAKE_BUILD_TYPE=RELEASE ..path/to/opencv2.4.10 (the folder you just unpacked)
+'''
+This will compile openCV which will take a while.
+Now run
+'''
+make
+'''
+which will build openCV - might also take a while. Finally run
+'''
+sudo make install
+'''
+Now you have resolved the openCV dependency of the wrapper and you can install
+'''
+pip install pyopencv
+'''
 ________________________________________________________
 
 # Extracting network data using the NET framework 
