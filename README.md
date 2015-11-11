@@ -166,10 +166,12 @@ which will build openCV - might also take a while. Finally run
 ```
 sudo make install
 ```
-Now you have resolved the openCV dependency of the wrapper and you can install
+Now you have resolved the openCV dependency of the wrapper and 
 ```
-pip install pyopencv
+import cv2
 ```
+should work inside a python shell.
+
 Important note: NET does only work with openCV versions 2.x as in 3.x the syntax of the find contour function changes.
 ________________________________________________________
 
