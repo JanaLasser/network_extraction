@@ -19,7 +19,17 @@
     jana.lasser@ds.mpg.de
 '''
 
+#path handling
 from os.path import join
+import os
+import sys
+
+print sys.argv[0]
+path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../net'))
+if not path in sys.path:
+    sys.path.insert(1, path)
+del path
+
 import cv2
 from skimage.morphology import disk,closing, remove_small_objects,opening
 from skimage.morphology import binary_opening, binary_closing
@@ -28,7 +38,7 @@ from skimage.filter import threshold_adaptive
 from skimage.filter import rank
 import numpy as np
 import scipy.misc
-import neat_helpers as nh
+import net_helpers as nh
 import argparse
 import ntpath
 

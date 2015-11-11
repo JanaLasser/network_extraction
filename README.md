@@ -221,8 +221,8 @@ The script to start the GUI is called *gegui.py* but all the functionality is pl
 
 ```
 /resultdir
-----original_image.png
-----extracted_graph_red1.gpickle
+----original_image_orig.png
+----extracted_graph_r1.gpickle
 ----distance_map_dm.png
 ```
 
