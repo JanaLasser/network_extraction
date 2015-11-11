@@ -108,9 +108,9 @@ In the following we detail how to get these three things on Linux, Windows and M
 3. Proceed like described in the instructions for the Linux installation above. 
 
 Note: for a freshly installed linux, other dependecies might need to be resolved for the third party libraries to run, for example libgeos-dev and libpng3. In general if a dependency is missing for a library, the error occurring when trying to install said library will give you a hint of what is missing and you can simply get the dependency by running 
-'''
+```
 pip install somedependency
-'''
+```
 
 
 --------------------------------------------------
@@ -149,27 +149,27 @@ OpenCV is a powerful library for image processing and computer vision written in
 1. Download the [source files](http://sourceforge.net/projects/opencvlibrary/files/opencv-unix/2.4.10/opencv-2.4.10.zip/download) and unpack them.
 
 2. Run
-'''
+```
 sudo apt-get install build-essential
 sudo apt-get install cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev
 sudo apt-get install python-dev python-numpy libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libjasper-dev libdc1394-22-dev
 mkdir opencv2.4-make
 cd opencv2.4-make
 cmake -D CMAKE_BUILD_TYPE=RELEASE ..path/to/opencv2.4.10 (the folder you just unpacked)
-'''
+```
 This will compile openCV which will take a while.
 Now run
-'''
+```
 make
-'''
+```
 which will build openCV - might also take a while. Finally run
-'''
+```
 sudo make install
-'''
+```
 Now you have resolved the openCV dependency of the wrapper and you can install
-'''
+```
 pip install pyopencv
-'''
+```
 ________________________________________________________
 
 # Extracting network data using the NET framework 
