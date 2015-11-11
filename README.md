@@ -60,6 +60,7 @@ In the following we detail how to get these three things on Linux, Windows and M
 --------------------------------------------------
 
 ## Windows
+# True Windows
 1. Download the latest python 2.7 release [here](https://www.python.org/downloads/) and install it.
 	To get pip, if you are on windows 8 or later, start Powershell and run
 	```
@@ -95,7 +96,18 @@ In the following we detail how to get these three things on Linux, Windows and M
 	```
 	python setup_c_net_functions.py build_ext --inplace
 	```
-	If it still does not work, good luck!
+	If it still does not work, you can try the VM-Version described below.
+
+# Linux-VM in Windows
+(Thanks to Benedikt Best for describing this solution!)
+1. Get [VMWare Player](http://www.vmware.com/products/player/) (licence free for non-commercial use) and install it. 
+2. Download and install [Ubuntu](http://www.ubuntu.com/download/desktop/thank-you?country=DE&version=14.04.3&architecture=i386). Make sure your Ubuntu-VM has at least 4GB of RAM, else working with larger images/networks might cause swapping to hard drive and freezing of the computer.
+3. Proceed like described in the instructions for the Linux installation above. 
+Note: for a freshly installed linux, other dependecies might need to be resolved for the third party libraries to run, for example libgeos-dev and libpng3. In general if a dependency is missing for a library, the error occurring when trying to install said library will give you a hint of what is missing and you can simply get the dependency by running 
+'''
+pip install somedependency
+'''
+
 
 --------------------------------------------------
 
@@ -258,7 +270,7 @@ The statistics calculated by the script as is are:
 - sort NET's options in a comprehensible way
 - refer to the methods paper as soon as it is in the ArXiv
 - implement an option to modify the node size in plots
-- specify how GeGUI selects the right files in a folder
+- specify how gegui selects the right files in a folder
 - add markdown example processings for binarize, NET and maybe also analyze including images
 - maybe add screenshots to geguis description
 
