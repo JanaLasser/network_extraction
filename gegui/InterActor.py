@@ -9,6 +9,7 @@ Copyright (C) 2015 Jana Lasser GPL-3.0
 '''
 
 import matplotlib.pyplot as plt
+plt.ion()
 import os
 from os.path import join
 #import argparse
@@ -98,11 +99,11 @@ class InterActor(object):
                           
         self.graph = None                                                       #try to load the graph object
         for f in os.listdir(self.name_dict['source_path']):                     #look for a file that ends with '_red1.gpickle'
-            if f.endswith('_red1.gpickle'):                                     #this corresponds to a graph which has some redundant nodes left
+            if f.endswith('_r1.gpickle'):                                     #this corresponds to a graph which has some redundant nodes left
                 self.graph = load(join(self.name_dict['source_path'],f))
         if self.graph == None:                                                  #if no suitable file is found, print an error message
-            print 'No corresponding .gpickle-file found!'\
-            +' (looking for _red1.gpickle)\nClosing the GUI.'
+            print 'gegui> No corresponding .gpickle-file found!'\
+            +' (looking for _r1.gpickle)\ngegui> Closing the GUI.'
             printHelp()                                                         #print the help message and exit the GUI
             sys.exit()
             
