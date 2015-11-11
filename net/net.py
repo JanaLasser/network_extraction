@@ -226,7 +226,7 @@ save_distance_map = args.distance_map                                          #
 
 parameters = {'r':redundancy, 'p':order}
 
-pa = "Net> "                                                                   #preamble
+pa = "NET> "                                                                   #preamble
 
 image_name = ntpath.basename(image_source).split('.')[0]
 image_name = image_name.split('_binary')[0]
