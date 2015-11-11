@@ -30,7 +30,6 @@ from os.path import join
 import os
 import sys
 
-print sys.argv[0]
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../net'))
 if not path in sys.path:
     sys.path.insert(1, path)

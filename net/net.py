@@ -21,6 +21,8 @@
 
 ### imports ###
 # standard imports
+import os
+import sys
 import time
 from os.path import join
 import ntpath
@@ -32,6 +34,12 @@ import meshpy.triangle as triangle
 import scipy.misc
 from skimage.morphology import binary_opening, binary_closing, disk
 from skimage.morphology import remove_small_objects
+
+#path handling
+path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../net'))
+if not path in sys.path:
+    sys.path.insert(1, path)
+del path
 	
 #custom helper functions
 import net_helpers as nh
