@@ -60,7 +60,7 @@ In the following we detail how to get these three things on Linux, Windows and M
 --------------------------------------------------
 
 ## Windows
-# True Windows
+### True Windows
 1. Download the latest python 2.7 release [here](https://www.python.org/downloads/) and install it.
 	To get pip, if you are on windows 8 or later, start Powershell and run
 	```
@@ -98,7 +98,7 @@ In the following we detail how to get these three things on Linux, Windows and M
 	```
 	If it still does not work, you can try the VM-Version described below.
 
-# Linux-VM in Windows
+### Linux-VM in Windows
 (Thanks to Benedikt Best for describing this solution!)
 1. Get [VMWare Player](http://www.vmware.com/products/player/) (licence free for non-commercial use) and install it. 
 2. Download and install [Ubuntu](http://www.ubuntu.com/download/desktop/thank-you?country=DE&version=14.04.3&architecture=i386). Make sure your Ubuntu-VM has at least 4GB of RAM, else working with larger images/networks might cause swapping to hard drive and freezing of the computer.
