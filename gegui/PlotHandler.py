@@ -56,7 +56,7 @@ class PlotHandler(object):
         self.edge_list = {}
         self.marked_list = {}
         self.width_scale_factor = 0
-        plt.draw()
+        self.figure.canvas.draw_idle()
             
         
     def plot_graph(self,node_collection,edge_collection):
@@ -86,6 +86,7 @@ class PlotHandler(object):
         
         colormap = plt.get_cmap('hot')
         plt.imshow(self.background,origin='lower',alpha=0.5,cmap=colormap)
+        self.figure.canvas.draw_idle()
     
     def update_mode(self,text):     
         self.current_mode = self.figure.gca().set_title(text,fontsize=14)
