@@ -159,6 +159,14 @@ Optional: distance_map -dm
         map to determine radii of network edges.
         Defaults to False.
 
+Optional: gegui -gegui
+        Enables gegui mode. This is especially helpful if you plan on using the
+        extracted networks within gegui later on. With this option enabled NET
+        will create a separate folder for the extracted graph and save the graph
+        and its distance map in this folder (this is the file-structure gegui
+        requires to run). NOTE that you still have to put the original file into
+        the newly created folder if you want geguis overlay functionality to
+        work properly!
 """				
 
 parser = argparse.ArgumentParser(description='Net (Network Extraction '\
@@ -214,6 +222,14 @@ parser.add_argument('-n', '--node_size', type=float, help='Sets size of nodes' +
 
 parser.add_argument('-dm', '--distance_map',action="store_true", \
             help = "Saves the distance map.",default=False)
+
+parser.add_argument('-gegui', '--gegui', action="store_true", \
+            help= "Enable this when planning to use gegui with the extracted" +
+            "graphs: it will create a separate folder for the result in the" +
+            "target directory and save all the files gegui needs correclty" +
+            "named in the new folder. NOTE: you will still need to copy the" +
+            "original (non-binary) image to the newly created folder if you"
+            + "want to superimpose the graph onto it!")
                 
 args = parser.parse_args()
 verbose = args.verbose                                                         #verbosity switch enables printing of progress output
@@ -231,6 +247,7 @@ graph_format = args.graph_format
 dpi = args.resolution                                                          #specifies resolution of plots (will be ignored if figure format is pdf)               
 n_size = args.node_size
 save_distance_map = args.distance_map                                          #enables saving of the euclidean distance map
+gegui = args.gegui
 
 parameters = {'r':redundancy, 'p':order}
 
@@ -241,6 +258,15 @@ image_name = image_name.split('_binary')[0]
 
 if dest == None:
     dest = image_source.split(image_name)[0]
+
+if gegui:
+    save_distance_map = True
+    dest = join(dest,image_name)
+    if os.path.exists(dest):
+        pass
+    else:
+        os.mkdir(dest)
+
 if verbose:
     print "\n" + pa + "*** Starting to vectorize image %s ***"%image_name
     print "\n" + pa + "Current step: Image preparations"
