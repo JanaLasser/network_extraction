@@ -198,7 +198,12 @@ def getContours(image):
     '''
     
     image = image.astype(np.uint8)
-    contours,hirachy = cv2.findContours(image,cv2.RETR_CCOMP,\
+
+    if cv2.__version__ < '3.1.0':
+        contours,hirachy = cv2.findContours(image,cv2.RETR_CCOMP,\
+                                        cv2.CHAIN_APPROX_TC89_L1)
+    else:
+        image, contours,hirachy = cv2.findContours(image,cv2.RETR_CCOMP,\
                                         cv2.CHAIN_APPROX_TC89_L1)
     contours = np.asarray(contours)   
     
