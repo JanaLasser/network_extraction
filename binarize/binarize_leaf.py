@@ -28,6 +28,7 @@ if not path in sys.path:
 del path
 
 import cv2
+from cv2 import threshold, imread, blur
 from skimage.morphology import disk,closing, remove_small_objects,opening
 from skimage.morphology import binary_opening, binary_closing
 from skimage.filter import threshold_adaptive
@@ -35,9 +36,9 @@ from skimage.filter import threshold_adaptive
 from skimage.filter import rank
 import numpy as np
 import scipy.misc
-import net_helpers as nh
+from net_helpers import RGBtoGray
 import argparse
-import ntpath
+from ntpath import basename
 
 from skimage import data
 from skimage import filter
@@ -113,6 +114,9 @@ parser.add_argument('-m','--minimum_feature_size', type=int, \
 parser.add_argument('-s','--smoothing',type=int,\
                     help='Sets kernel size of the binary opening and closing'+\
                     ' operators.', default=2)
+
+parser.add_argument('-i','--invert',action='store_true',\
+                    help='Inverts the intensity of the image.')
                 
 args = parser.parse_args()
 image_source = args.source
@@ -122,20 +126,22 @@ histogram_equalization = args.histogram_equalization
 ratio = args.ratio
 minimum_feature_size = args.minimum_feature_size                               #features smaller than minimum_feature_size will be discarded.
 smoothing = args.smoothing                                                     #enables smoothing via binary opening and closing on and off
-blur = args.gaussian_blur
+gaussian_blur = args.gaussian_blur
+invert = args.invert
 
-image_name,ending = ntpath.basename(image_source).split('.')
+image_name,ending = basename(image_source).split('.')
 if dest == None:
     dest = image_source.split(image_name + '.' + ending )[0]
 
 #load the image
-image = nh.getImage(image_source)
-image = nh.RGBtoGray(image)
+image = imread(image_source)
+image = RGBtoGray(image)
 image = image.astype(np.uint8)
 					
 #blur image to get rid of most of the noise
-blur_kernel = (blur,blur)
-image = cv2.blur(image, blur_kernel)
+if gaussian_blur > 0:
+    blur_kernel = (gaussian_blur,gaussian_blur)
+    image = blur(image, blur_kernel)
 
 #image = np.where(image > 100, 255,1)
 
@@ -152,22 +158,27 @@ image = ratio*image_eq + (1-ratio)*image
 
 
 #find a favorable threshold using otsu thresholding and modify it by t_mod
-threshold = nh.otsuThreshold(image)-offset
+threshold, ret = threshold(image, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+threshold -= offset
 
-#threshold and save image
+#threshold image
 image = np.where(image > threshold,1.0,0.0)
-image = np.where(image > 0,0,1)
-#image = opening(image,disk(3))
-#image = closing(image,disk(4))
+if invert:
+    image = 255 - image
 
+#remove disconnected objects
 image = remove_small_objects(image.astype(bool),\
     min_size=minimum_feature_size,connectivity=1)
 
+#smoothe with binary opening and closing
 if smoothing:                                                                  #standard binary image noise-removal with opening followed by closing
     image = binary_opening(image,disk(smoothing))                              #maybe remove this processing step if depicted structures are really tiny
     image = binary_closing(image,disk(smoothing))  
-    
+
+#remove disconnected objects and fill in small holes
 image = remove_small_objects(image.astype(bool),\
     min_size=minimum_feature_size,connectivity=1)
+image = remove_small_holes(image.astype(bool),\
+    min_size=minimum_feature_size/100,connectivity=1)
 
 scipy.misc.imsave(join(dest,image_name + "_binary.png"),image)
