@@ -36,20 +36,15 @@ if not path in sys.path:
 del path
 
 import cv2
-from skimage.morphology import disk,closing, remove_small_objects,opening
-from skimage.morphology import binary_opening, binary_closing
-from skimage.filter import threshold_adaptive
+from cv2 import imread, adaptiveThreshold, blur
+from skimage.morphology import disk, remove_small_objects, \
+    remove_small_holes, binary_opening, binary_closing
 
-from skimage.filter import rank
 import numpy as np
-import scipy.misc
-import net_helpers as nh
+from scipy.misc import imsave
+from net_helpers import RGBtoGray
 import argparse
-import ntpath
-
-from skimage import data
-from skimage import filter
-from skimage import img_as_float, img_as_int
+from ntpath import basename
 
 '''
 Argument handling:
@@ -63,13 +58,14 @@ Optional: destination -dest
         The script will save all results in "destination" if it is specified.
         Otherwise results are saved at the destination of the source image.
         
-Optional: threshold_modifier -t
-        The correct threshold for the thresholding process will be determined
-        with Otsu's method. Nevertheless sometimes this process does not yield
-        the best results and the threshold needs some manual tweaking. When
-        processing a dataset, just look at the first few images, see if the
-        binaries look good and if not, tweak the threshold a bit via the -t
-        modifier.
+Optional: block_size -t
+        Block size for OpenCv's adaptive thresholding method. We use the
+        gaussian method for the adaptive thresholding. Therefore the threhold
+        value T(x,y) is a weighted sum (cross correlation with a Gaussian window)
+        of the block_size x block_size neighborhood of (x,y) minus a constant
+        modifier C. The standard deviation for the gaussian window is computed
+        baded on the block_size as 0.3*((block_size-1)*0.5 - 1) + 0.8.
+        Defaults to 51 pixels.
         
 Optional: minimum_feature_size -s
         If minimum_feature_size in pixels is specified, features with a size of
@@ -105,8 +101,8 @@ parser.add_argument('-dest', type=str, help='Complete path to the folder '\
 parser.add_argument('-g','--gaussian_blur', type=int, \
                 help='Kernel size for the Gaussian blur.', default=3)
                 
-parser.add_argument('-t','--threshold_modifier', type=int, \
-                help='Modifier for the selected threshold', default=0)
+parser.add_argument('-t','--block_size', type=int, \
+                help='Block size for the adaptive thresholding.', default=51)
                 
 parser.add_argument('-m','--minimum_feature_size', type=int, \
                 help='Minimum size (pixels) up to which features will be ' + \
@@ -119,26 +115,30 @@ parser.add_argument('-s','--smoothing',type=int,\
 args = parser.parse_args()
 image_source = args.source
 dest = args.dest
-t_mod = args.threshold_modifier
+block_size = args.block_size
 minimum_feature_size = args.minimum_feature_size                               #features smaller than minimum_feature_size will be discarded.
 smoothing = args.smoothing                                                     #enables smoothing via binary opening and closing on and off
-blur = args.gaussian_blur
+gaussian_blur = args.gaussian_blur
 
-image_name,ending = ntpath.basename(image_source).split('.')
+image_name,ending = basename(image_source).split('.')
 if dest == None:
     dest = image_source.split(image_name + '.' + ending )[0]
 
 #load the image
-image = nh.getImage(image_source)
-image = nh.RGBtoGray(image)
+image = imread(image_source)
+image = RGBtoGray(image)
 image = image.astype(np.uint8)
 					
 #blur image to get rid of most of the noise
-blur_kernel = (blur,blur)
-image = cv2.blur(image, blur_kernel)
+if gaussian_blur > 0:
+    blur_kernel = (gaussian_blur,gaussian_blur)
+    image = blur(image, blur_kernel)
 
 #threshold image
-image = np.where(image > t_mod, 255,0)
+background_mask = np.where(image < 20, 0, 1)
+image = adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+        cv2.THRESH_BINARY,block_size,2)
+image = np.where(background_mask == 0, 0, image)
 
 #remove disconnected objects
 image = remove_small_objects(image.astype(bool),\
@@ -149,11 +149,14 @@ if smoothing:                                                                  #
     image = binary_opening(image,disk(smoothing))                              #maybe remove this processing step if depicted structures are really tiny
     image = binary_closing(image,disk(smoothing))  
    
-#remove disconnected objects
+#remove disconnected objects and fill in holes
 image = remove_small_objects(image.astype(bool),\
     min_size=minimum_feature_size,connectivity=1)
+image = remove_small_holes(image.astype(bool),\
+    min_size=minimum_feature_size/100,connectivity=1)
 
-scipy.misc.imsave(join(dest,image_name + "_binary.png"),image)
+#save image
+imsave(join(dest,image_name + "_binary.png"),image)
 
 
 
