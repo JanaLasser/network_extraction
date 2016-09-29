@@ -67,7 +67,7 @@ Optional: block_size -t
         baded on the block_size as 0.3*((block_size-1)*0.5 - 1) + 0.8.
         Defaults to 51 pixels.
         
-Optional: minimum_feature_size -s
+Optional: minimum_feature_size -m
         If minimum_feature_size in pixels is specified, features with a size of
         up to minimum_feature_size will be removed from the binary image
         previous to processing. This serves to a) reduce the number of contours
