@@ -4,17 +4,32 @@ python binarize_adaptive.py '../data/originals/cracks1.png' -g 3 -s 0 -t 71 -m 7
 cracks2.png
 python binarize_adaptive.py '../data/originals/cracks2.png' -g 7 -s 3 -t 171 -m 7000 -i
 
-leaf1_compressed.png
-python binarize_adaptive.py '../data/originals/leaf1_compressed.png' -g 2 -s 0 -t 51 -m 2000 -i 
+leaf1.png
+python binarize_adaptive.py ../data/originals/leaf1.png -t 201 -g 5 -s 2 -m 50000 -i
 
-leaf2_compressed.png
-python binarize_adaptive.py '../data/originals/leaf2_compressed.png' -g 3 -s 0 -t 71 -m 2000 -i 
-
-leaf3_compressed.png
-python binarize_adaptive.py '../data/originals/leaf3_compressed.png' -g 3 -s 0 -t 71 -m 7000 -i 
+leaf2.png
+python binarize_adaptive.py ../data/originals/leaf2.png -t 251 -g 11 -s 4 -m 100000 -i
 
 leaf3_detail.png
-python binarize_adaptive.py '../data/originals/leaf3_detail.png' -g 5 -s 2 -t 201 -m 100000 -i
+python binarize_adaptive.py '../data/originals/leaf3_detail.png' -g 5 -s 2 -t 201 -m 100000 -i 
+
+leaf4.png
+python binarize_adaptive.py ../data/originals/leaf4.png -t 51 -g 3 -s 2 -m 10000 -i
+
+leaf5.png
+python binarize_adaptive.py ../data/originals/leaf5.png -t 51 -g 3 -s 2 -m 10000 -i
+
+leaf6.png
+python binarize_adaptive.py ../data/originals/leaf6.png -t 51 -g 3 -s 2 -m 10000 -i
+
+leaf7.png
+python binarize_adaptive.py ../data/originals/leaf7.png -t 51 -g 3 -s 2 -m 10000 -i
+
+leaf8.png
+python binarize_adaptive.py ../data/originals/leaf8.png -t 51 -g 3 -s 2 -m 10000 -i
+
+leaf9.png
+python binarize_adaptive.py ../data/originals/leaf9.png -t 51 -g 3 -s 2 -m 10000 -i
 
 tracheole1.tif
 python binarize_adaptive.py '../data/originals/tracheole1.tif' -g 3 -s 1 -t 51 -m 10000 
