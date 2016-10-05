@@ -39,7 +39,9 @@ import math
 import numpy as np
 import scipy
 import networkx as nx
-import matplotlib.pyplot as plt
+#import matplotlib 
+#matplotlib.use('qt4agg') 
+import matplotlib.pyplot as plt 
 from PIL import Image
 import cv2
 
