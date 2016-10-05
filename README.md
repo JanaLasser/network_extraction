@@ -255,7 +255,7 @@ If you want to extract a graph from the image */data/binaries/tracheole6.png*, s
 ```
 python net.py ../data/binaries/tracheole6.png -p 5 -r 2 -v -plt -fformat png -dpi 2000
 ```
-If you have a shitty binary that you want to smooth and clear up (like */data/binaries/tracheole8.png*), you want no pruning, are content with only some redundant nodes, want to have a visualization of intermediate steps, verbosity and a distance map but no plot of the final graph, then run
+If you have a noisy binary that you want to smooth and clear up (like */data/binaries/tracheole8.png*), you want no pruning, are content with only some redundant nodes, want to have a visualization of intermediate steps, verbosity and a distance map but no plot of the final graph, then run
 ``` 
 python net.py ../data/binaries/tracheole8.png -s 2 -m 1000 -p 0 -r 1 -d -v -dm
 ```
