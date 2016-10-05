@@ -8,7 +8,9 @@ Created on Mon Apr 14 11:20:41 2014
 Copyright (C) 2015 Jana Lasser GPL-3.0
 '''
 
-import matplotlib.pyplot as plt
+#import matplotlib 
+#matplotlib.use('qt4agg') 
+import matplotlib.pyplot as plt 
 import os
 import networkx as nx
 import numpy as np

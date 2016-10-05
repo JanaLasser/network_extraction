@@ -26,25 +26,29 @@ Created on Fri Jun  5 17:23:23 2015
     jana.lasser@ds.mpg.de
 '''
 
+#standard imports
 from os.path import join
 import os
 import sys
+from ntpath import basename
 
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../net'))
 if not path in sys.path:
     sys.path.insert(1, path)
 del path
 
+#dependencies
 import cv2
 from cv2 import imread, adaptiveThreshold, blur
 from skimage.morphology import disk, remove_small_objects, \
     remove_small_holes, binary_opening, binary_closing
-
 import numpy as np
 from scipy.misc import imsave
-from net_helpers import RGBtoGray
 import argparse
-from ntpath import basename
+
+#custom modules
+from net_helpers import RGBtoGray
+
 
 '''
 Argument handling:
@@ -85,6 +89,19 @@ Optional: smoothing -s
         below the width of the smallest feature in the image (in pixels).
         Defaults to 3 pixels.
 
+Optional: invert -i
+        If the image has reversed intensity values (e.g. foreground dark and
+        blackground light, like the images of the leaves), you can invert the
+        image by supplying the -i flag.
+        Defaults to False.
+
+Optional: constant_background -c
+        Sometimes you know that everything below a certain intensity value has
+        to be background. If you are sure of this, you can supply a constant 
+        value for the background that will be taken into consideration when
+        creating the binary image.
+        Defaults to 0.
+
 '''
 
 
@@ -115,6 +132,9 @@ parser.add_argument('-s','--smoothing',type=int,\
 
 parser.add_argument('-i','--invert',action='store_true',\
                     help='Inverts the intensity of the image.')
+
+parser.add_argument('-c','--constant_background',type=int,\
+                    help='Adds a constant value for background intensity')
                 
 args = parser.parse_args()
 image_source = args.source
@@ -124,6 +144,7 @@ minimum_feature_size = args.minimum_feature_size                               #
 smoothing = args.smoothing                                                     #enables smoothing via binary opening and closing on and off
 gaussian_blur = args.gaussian_blur
 invert = args.invert
+constant_background = args.constant_background
 
 image_name,ending = basename(image_source).split('.')
 if dest == None:
@@ -143,18 +164,33 @@ if gaussian_blur > 0:
     image = blur(image, blur_kernel)
 
 #threshold image
-background_mask = np.where(image < 20, 0, 1)
+background_mask = np.where(image < constant_background, 0, 1)
 image = adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
         cv2.THRESH_BINARY,block_size,2)
 image = np.where(background_mask == 0, 0, image)
 
 #remove disconnected objects
-image = remove_small_objects(image.astype(bool),\
+#if after removing objects smaller than minimum_feature_size the image
+#is empty, try again with a smaller minimum_feature_size
+new = remove_small_objects(image.astype(bool),\
     min_size=minimum_feature_size,connectivity=1)
+if new.sum() == 0:
+    print('minimum feature size too large, trying again with m = {}'.\
+            format(int(minimum_feature_size/2)))
+    new = remove_small_objects(image.astype(bool),\
+        min_size=int(minimum_feature_size/2),connectivity=1)
+    if new.sum() == 0:
+        print('minimum feature size too large, trying again with m = {}'.\
+            format(int(minimum_feature_size/4)))
+        new = remove_small_objects(image.astype(bool),\
+            min_size=int(minimum_feature_size/4),connectivity=1)
+image = new
 
 #smoothe with binary opening and closing
-if smoothing:                                                                  #standard binary image noise-removal with opening followed by closing
-    image = binary_opening(image,disk(smoothing))                              #maybe remove this processing step if depicted structures are really tiny
+#standard binary image noise-removal with opening followed by closing
+#maybe remove this processing step if depicted structures are really tiny
+if smoothing:                                    
+    image = binary_opening(image,disk(smoothing))                              
     image = binary_closing(image,disk(smoothing))  
    
 #remove disconnected objects and fill in holes

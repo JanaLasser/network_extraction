@@ -9,7 +9,9 @@ Created on Mon Apr 14 11:20:51 2014
 Copyright (C) 2015 Jana Lasser GPL-3.0
 '''
 
-import matplotlib.pyplot as plt
+#import matplotlib 
+#matplotlib.use('qt4agg') 
+import matplotlib.pyplot as plt 
 from os.path import join
 import os
 import numpy as np
@@ -45,13 +47,12 @@ class PlotHandler(object):
             if f_base.endswith('_orig'):
                 self.background = IA.getImage(\
                         join(self.name_dict['source_path'],f))
-        if self.background == None:
+        if self.background == 0:
             print "\n"
             print "gegui> *** WARNING: No corresponding original image found "
             print "gegui> (looking for '_orig'). Proceeding without overlay! ***"
             print "\n"
             
-        #self.height, self.width = self.background.shape  
         self.node_list = {}
         self.edge_list = {}
         self.marked_list = {}
@@ -85,7 +86,7 @@ class PlotHandler(object):
             self.node_list.update({node:new_node})
         
         colormap = plt.get_cmap('hot')
-        if self.background != None:
+        if self.background != 0:
             plt.imshow(self.background,origin='lower',alpha=0.5,cmap=colormap)
         self.figure.canvas.draw_idle()
     

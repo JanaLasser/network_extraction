@@ -8,14 +8,12 @@ Created on Mon Apr 14 11:19:04 2014
 Copyright (C) 2015 Jana Lasser GPL-3.0
 '''
 
-import matplotlib.pyplot as plt
+#import matplotlib 
+#matplotlib.use('qt4agg') 
+import matplotlib.pyplot as plt 
 plt.ion()
 import os
 from os.path import join
-#import argparse
-#import networkx as nx
-#import tile_functions as tf
-#import numpy as np
 import GraphHandler
 from copy import deepcopy
 from PIL import Image
