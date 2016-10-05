@@ -1,3 +1,0 @@
-for f in ../../cell_benchmarking/Embryo_0015/binaries/*;
-do python neat.py "$f" -p 5 -r 2 -v -plt -fformat png -dpi 500 -dest /home/jlasser/cell_benchmarking/Embryo_0015/graphs; done
- 
