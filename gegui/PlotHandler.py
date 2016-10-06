@@ -47,7 +47,7 @@ class PlotHandler(object):
             if f_base.endswith('_orig'):
                 self.background = IA.getImage(\
                         join(self.name_dict['source_path'],f))
-        if self.background == 0:
+        if self.background.size == 0:
             print "\n"
             print "gegui> *** WARNING: No corresponding original image found "
             print "gegui> (looking for '_orig'). Proceeding without overlay! ***"
@@ -86,7 +86,8 @@ class PlotHandler(object):
             self.node_list.update({node:new_node})
         
         colormap = plt.get_cmap('hot')
-        if self.background != 0:
+        if self.background.size != 0:
+            print(self.background)
             plt.imshow(self.background,origin='lower',alpha=0.5,cmap=colormap)
         self.figure.canvas.draw_idle()
     
