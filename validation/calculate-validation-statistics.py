@@ -112,8 +112,8 @@ labels = [label.split('_')[0] for label in labels]
 #format handling for the result file
 header_format = '{:<40}{:^12}{:^12}{:^12}{:^12}{:^12}{:^12}' + \
 			'{:^12}{:^12}{:^12}{:^12}{:^12}{:^12}'
-header_values = ['#label','#N_o','#N_v','#L_o','#L_v','#Wm_o','#Wr_o',\
-		'#Wm_v','#Wr_v','#A_o','#A_v','#A_i','#D_px']
+header_values = ['#label','#N_o','#N_v','#L_o','#L_v','#R_o','#r_o',\
+		'#R_v','#r_v','#A_o','#A_v','#A_i','#D_px']
 entry_format = '{:<40}{:^12d}{:^12d}{:^12.2f}{:^12.2f}{:^12.3f}' + \
 			'{:^12.3f}{:^12.2f}{:^12.2f}{:^12.2f}{:^12.2f}' + \
 			'{:^12.2f}{:^12.5f}'
@@ -163,15 +163,15 @@ for label,i in zip(labels[0:],range(len(labels))):
 
 	#measure mean conductivity (edge width) 
 	#and ratio of smallest to biggest conductivity
-	Wm_o, Wr_o = measure_weight(original)
-	Wm_v, Wr_v = measure_weight(validation)
+	R_o, r_o = measure_weight(original)
+	R_v, r_v = measure_weight(validation)
 
 	#measure the area of the convex hull and XOR of the two convex hulls
 	A_o, A_v, A_i = measure_convex_hull_overlap(original, validation)
 
 	#dump everything into the resultfile, analysis is done in a different script
-	entry_values = [label,N_o,N_v,L_o,L_v,Wm_o,Wr_o, \
-				Wm_v,Wr_v,A_o,A_v,A_i,D_px]
+	entry_values = [label,N_o,N_v,L_o,L_v,R_o,r_o, \
+				R_v,r_v,A_o,A_v,A_i,D_px]
 	print >> stats, entry_format.format(*entry_values)
 
 stats.close()

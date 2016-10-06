@@ -157,7 +157,7 @@ dpi = 80			#screen dpi
 #folder. We uploaded a random selection of 20 graphs from the 531 graphs
 #used in the full validation so you can retrace our steps if you like.
 if mode == 'tracheoles':
-	dest = join(getcwd(),'validation-graphs-exemplary')
+	dest = join(getcwd(),'validation-graphs-tracheoles')
 	GRAPHS = listdir(dest) #number of graphs
 	GRAPHS = [g for g in GRAPHS if g.endswith('.gpickle')]
 	GRAPHS.sort() #sort just so progress is easier to track
