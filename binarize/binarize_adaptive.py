@@ -61,7 +61,11 @@ Required: source
 Optional: destination -dest
         The script will save all results in "destination" if it is specified.
         Otherwise results are saved at the destination of the source image.
-        
+     
+Optional: gaussian_blur -g
+        Kernel size for the gaussian blur applied to the image to smooth
+        out small frequency noise.
+
 Optional: block_size -t
         Block size for OpenCv's adaptive thresholding method. We use the
         gaussian method for the adaptive thresholding. Therefore the threhold
@@ -172,17 +176,17 @@ image = np.where(background_mask == 0, 0, image)
 #remove disconnected objects
 #if after removing objects smaller than minimum_feature_size the image
 #is empty, try again with a smaller minimum_feature_size
-new = remove_small_objects(image.astype(bool),\
+new = remove_small_objects(image.astype(np.bool),\
     min_size=minimum_feature_size,connectivity=1)
 if new.sum() == 0:
     print('minimum feature size too large, trying again with m = {}'.\
             format(int(minimum_feature_size/2)))
-    new = remove_small_objects(image.astype(bool),\
+    new = remove_small_objects(image.astype(np.bool),\
         min_size=int(minimum_feature_size/2),connectivity=1)
     if new.sum() == 0:
         print('minimum feature size too large, trying again with m = {}'.\
             format(int(minimum_feature_size/4)))
-        new = remove_small_objects(image.astype(bool),\
+        new = remove_small_objects(image.astype(np.bool),\
             min_size=int(minimum_feature_size/4),connectivity=1)
 image = new
 
