@@ -9,7 +9,7 @@ import argparse
 import InterActor
 import sys
 
-#dirty hack to turn on interactive mode in most recent matplitlib version
+#dirty hack to turn on interactive mode in most recent matplotlib version
 sys.ps1 = 'SOMETHING'
 
 
