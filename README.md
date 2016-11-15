@@ -133,7 +133,7 @@ pip install somedependency
 	pip install networkx
 	```
 	Repeat this process with scipy, matplotlib, cython, scikit-image, pillow, meshpy and shapely. 
-	To install opencv, follow the instructions detailed [here](http://tilomitra.com/opencv-on-mac-osx/) or scroll to the bottom of the installation instructions for some notes on how to install openCV.
+	To install opencv, either use brew or follow the instructions detailed [here](http://tilomitra.com/opencv-on-mac-osx/) or scroll to the bottom of the installation instructions for some notes on how to install openCV. 
 
 3. Navigate to the folder /NET and run
 	```
@@ -141,6 +141,18 @@ pip install somedependency
 	```
 	This should create two files called *C_net_functions.so* and *C_net_functions.c*, the first you need, the latter you can safely delete.
 
+### Known issues
+When running NET within a virtualenv on mac the matplotlib backend is not found correctly. This is a known issue which unfortunately prevents NET from running. It can be fixed by switching to the qt4 backend. In the code you have to replace:
+```
+import matplotlib.pyplot as plt
+```
+with
+```
+import matplotlib
+matplotlib.use('qt4agg')
+import matplotlib.pyplot as plt
+```
+This affects all the scripts from the /validation and /GeGui folders. The appropriate lines are already added to the scripts. If you run into this problem, just uncomment them in the beginning of the affected scripts.
 --------------------------------------------------
 
 ## Some notes on installing OpenCV for Linux
